@@ -18,6 +18,27 @@
                 </a>
             </li>
 
+            @if(auth()->user()->role === 'admin')
+            <li class="dropdown">
+                <a href="javascript:void(0)">
+                    <iconify-icon icon="solar:box-outline" class="menu-icon"></iconify-icon>
+                    <span>Inventory</span>
+                </a>
+                <ul class="sidebar-submenu">
+                    <li>
+                        <a href="{{ route('products.index') }}">
+                            <i class="ri-circle-fill circle-icon text-success-main w-auto"></i> Produk
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('categories.index') }}">
+                            <i class="ri-circle-fill circle-icon text-warning-main w-auto"></i> Kategori
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            @endif
+
             <li class="dropdown">
                 <a href="javascript:void(0)">
                     <iconify-icon icon="solar:cart-3-outline" class="menu-icon"></iconify-icon>
@@ -43,29 +64,24 @@
             </li>
 
             @if(auth()->user()->role === 'admin')
-            <li class="dropdown">
-                <a href="javascript:void(0)">
-                    <iconify-icon icon="solar:box-outline" class="menu-icon"></iconify-icon>
-                    <span>Inventory</span>
-                </a>
-                <ul class="sidebar-submenu">
-                    <li>
-                        <a href="{{ route('products.index') }}">
-                            <i class="ri-circle-fill circle-icon text-success-main w-auto"></i> Produk
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('categories.index') }}">
-                            <i class="ri-circle-fill circle-icon text-warning-main w-auto"></i> Kategori
-                        </a>
-                    </li>
-                </ul>
-            </li>
-
             <li>
                 <a href="{{ route('users.index') }}">
                     <iconify-icon icon="flowbite:users-group-outline" class="menu-icon"></iconify-icon>
-                    <span>Users</span>
+                    <span>Admin & Staff</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('buyers.index') }}">
+                    <iconify-icon icon="solar:user-bold" class="menu-icon"></iconify-icon>
+                    <span>Buyers</span>
+                </a>
+            </li>
+
+            <li>
+                <a href="{{ route('expense.index') }}">
+                    <iconify-icon icon="solar:wallet-bold" class="menu-icon"></iconify-icon>
+                    <span>Expense</span>
                 </a>
             </li>
             @endif

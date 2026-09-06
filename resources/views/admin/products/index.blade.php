@@ -230,6 +230,36 @@
                         </div>
                     </div>
 
+                    <hr>
+
+                    <div class="form-switch switch-primary d-flex align-items-center gap-3 mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="add-record-expense"
+                            name="record_expense" value="1" onchange="toggleExpenseSection('add')">
+                        <label class="form-check-label line-height-1 fw-medium text-secondary-light" for="add-record-expense">
+                            Expense
+                        </label>
+                    </div>
+
+                    <div id="add-expense-section" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="text" class="form-control rupiah-input" id="add-expense-amount"
+                                    name="expense_amount" placeholder="0">
+                            </div>
+                        </div>
+                        {{-- <div class="mb-3">
+                            <label class="form-label">Periode</label>
+                            <select class="form-control" id="add-expense-periode" name="expense_periode">
+                                <option value="1">1 Bulan</option>
+                                <option value="3">3 Bulan</option>
+                                <option value="6">6 Bulan</option>
+                                <option value="12">12 Bulan</option>
+                            </select>
+                        </div> --}}
+                    </div>
+
                     <button type="submit" class="btn btn-primary-600 w-100 radius-8" 
                             style="padding: 0.6rem; font-weight: 600; border-radius: 0.5rem; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);"
                             onmouseover="this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)';"
@@ -369,6 +399,36 @@
                         </div>
                     </div>
 
+                    <hr>
+
+                    <div class="form-switch switch-primary d-flex align-items-center gap-3 mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="edit-record-expense"
+                            name="record_expense" value="1" onchange="toggleExpenseSection('edit')">
+                        <label class="form-check-label line-height-1 fw-medium text-secondary-light" for="edit-record-expense">
+                            Expense
+                        </label>
+                    </div>
+
+                    <div id="edit-expense-section" style="display:none;">
+                        <div class="mb-3">
+                            <label class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="text" class="form-control rupiah-input" id="edit-expense-amount"
+                                    name="expense_amount" placeholder="0">
+                            </div>
+                        </div>
+                        {{-- <div class="mb-3">
+                            <label class="form-label">Periode</label>
+                            <select class="form-control" id="edit-expense-periode" name="expense_periode">
+                                <option value="1">1 Bulan</option>
+                                <option value="3">3 Bulan</option>
+                                <option value="6">6 Bulan</option>
+                                <option value="12">12 Bulan</option>
+                            </select>
+                        </div> --}}
+                    </div>
+
                     <button type="submit" class="btn btn-primary-600 w-100 radius-8" 
                             style="padding: 0.6rem; font-weight: 600; border-radius: 0.5rem; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);"
                             onmouseover="this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.3)';"
@@ -396,6 +456,27 @@
     function cleanRupiah(value) {
         return value.replace(/\./g, '');
     }
+
+    // Rupiah formatter
+    function toRupiah(angka) {
+        var number_string = angka.toString().replace(/[^,\d]/g, ''),
+            split = number_string.split(','),
+            sisa = split[0].length % 3,
+            rupiah = split[0].substr(0, sisa),
+            ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+        if (ribuan) rupiah += (sisa ? '.' : '') + ribuan.join('.');
+        return split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+    }
+
+    function toggleExpenseSection(prefix) {
+        var checked = $('#' + prefix + '-record-expense').is(':checked');
+        $('#' + prefix + '-expense-section').toggle(checked);
+    }
+
+    // Format rupiah on expense amount input
+    $(document).on('keyup', '#add-expense-amount, #edit-expense-amount', function () {
+        $(this).val(toRupiah($(this).val()));
+    });
 
     // Add Modal - Rupiah input listener
     document.querySelectorAll('#addForm .rupiah').forEach(el => {
@@ -488,6 +569,12 @@
         $('#addForm')[0].reset();
         document.getElementById('imagePreview').style.display = 'none';
         dropZone.style.display = 'block';
+
+        $('#add-record-expense').prop('checked', false);
+        $('#add-expense-section').hide();
+        $('#add-expense-amount').val('');
+        $('#add-expense-periode').val('1');
+
         $('#addModal').modal('show');
     });
 
@@ -504,6 +591,11 @@
         $('#edit-discount').val(formatRupiah(product.discount.toString()));
         $('#edit-stock').val(product.stock);
         $('#edit-unit').val(product.unit);
+
+        $('#edit-record-expense').prop('checked', false);
+        $('#edit-expense-section').hide();
+        $('#edit-expense-amount').val('');
+        $('#edit-expense-periode').val('1');
 
         // Reset image preview
         document.getElementById('edit-image').value = '';
@@ -527,7 +619,7 @@
 
     // Form submission - clean rupiah format
     $('#addForm, #editForm').on('submit', function(e) {
-        const rupiahFields = $(this).find('.rupiah');
+        const rupiahFields = $(this).find('.rupiah, .rupiah-input');
         rupiahFields.each(function() {
             if ($(this).val()) {
                 $(this).val(cleanRupiah($(this).val()));

@@ -6,6 +6,7 @@ use App\Models\Sale;
 use App\Models\Product;
 use App\Models\SaleDocument;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class SaleController extends Controller
@@ -126,12 +127,28 @@ class SaleController extends Controller
         ]);
     }
 
+    public function clearCart()
+    {
+        session()->forget('sale_cart');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Keranjang dikosongkan',
+            'cart' => [],
+        ]);
+    }
+
     // Checkout - proses pembayaran
     public function checkout(Request $request)
     {
         $request->validate([
-            'payment_method' => 'required|in:cash,qris,transfer',
-            'paid_amount' => 'required|integer|min:0',
+            'payment_type' => 'nullable|in:full,debt',
+            'payment_method' => 'nullable|in:cash,qris,transfer',
+            'paid_amount' => 'nullable|integer|min:0',
+            'buyer_id' => 'nullable|exists:buyers,id',
+            'due_date' => 'nullable|date|after_or_equal:today',
+            'down_payment' => 'nullable|integer|min:0',
+            'debt_note' => 'nullable|string|max:2000',
         ]);
 
         $cart = session()->get('sale_cart', []);
@@ -158,20 +175,114 @@ class SaleController extends Controller
         }
 
         $total_price = $subtotal;
-        $paid_amount = $request->paid_amount;
-        $change_amount = $paid_amount - $total_price;
+
+        $paymentType = $request->input('payment_type', 'full');
+        $isDebt = $paymentType === 'debt';
+
+        $paymentMethod = 'cash';
+        $paidAmount = 0;
+        $changeAmount = 0;
+        $status = 'completed';
+
+        $buyerId = null;
+        $dueDate = null;
+        $downPayment = 0;
+        $debtRemaining = 0;
+        $debtNote = null;
+        $buyerId = $request->filled('buyer_id') ? (int) $request->buyer_id : null;
+
+        if (!$isDebt) {
+            if (!$request->filled('payment_method')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Metode pembayaran wajib dipilih untuk bayar penuh.',
+                ], 422);
+            }
+
+            $paymentMethod = $request->payment_method;
+            $paidAmount = (int) ($request->paid_amount ?? 0);
+
+            if ($paidAmount < $total_price) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pembayaran tunai kurang dari total belanja.',
+                ], 422);
+            }
+
+            $changeAmount = $paidAmount - $total_price;
+            $downPayment = $paidAmount;
+        } else {
+            $dueDate = $request->input('due_date');
+            $debtNote = $request->input('debt_note');
+            $downPayment = (int) ($request->input('down_payment', 0));
+
+            if (!$buyerId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pelanggan wajib dipilih untuk transaksi hutang.',
+                ], 422);
+            }
+
+            if (!$dueDate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tanggal jatuh tempo wajib diisi untuk transaksi hutang.',
+                ], 422);
+            }
+
+            if ($downPayment < 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pembayaran awal tidak boleh negatif.',
+                ], 422);
+            }
+
+            if ($downPayment > $total_price) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pembayaran awal tidak boleh lebih besar dari total.',
+                ], 422);
+            }
+
+            if ($downPayment === $total_price) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pembayaran awal sama dengan total. Gunakan mode Bayar Penuh.',
+                ], 422);
+            }
+
+            if ($downPayment > 0 && !$request->filled('payment_method')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Metode pembayaran awal wajib dipilih jika ada pembayaran awal.',
+                ], 422);
+            }
+
+            $paymentMethod = $downPayment > 0 ? $request->payment_method : 'debt';
+            $paidAmount = $downPayment;
+            $changeAmount = 0;
+            $status = 'pending';
+            $debtRemaining = $total_price - $downPayment;
+        }
 
         // Buat SaleDocument (nota)
         $saleDocument = SaleDocument::create([
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
             'invoice_number' => 'INV-' . now()->format('YmdHis') . '-' . Str::random(4),
             'subtotal' => $subtotal,
             'discount_total' => $discount_total,
             'total_price' => $total_price,
-            'paid_amount' => $paid_amount,
-            'change_amount' => $change_amount,
-            'payment_method' => $request->payment_method,
-            'status' => 'completed',
+            'paid_amount' => $paidAmount,
+            'change_amount' => $changeAmount,
+            'payment_method' => $paymentMethod,
+            'payment_type' => $paymentType,
+            'is_debt' => $isDebt,
+            'status' => $status,
+            'buyer_id' => $buyerId,
+            'due_date' => $dueDate,
+            'down_payment' => $downPayment,
+            'debt_remaining' => $debtRemaining,
+            'debt_note' => $debtNote,
         ]);
 
         // Buat Sale items & kurangi stock
@@ -202,13 +313,18 @@ class SaleController extends Controller
             'message' => 'Transaksi berhasil',
             'sale_document_id' => $saleDocument->id,
             'invoice_number' => $saleDocument->invoice_number,
+            'payment_type' => $saleDocument->payment_type,
+            'buyer_name' => optional($saleDocument->buyer)->name,
+            'change_amount' => $saleDocument->change_amount,
+            'debt_remaining' => $saleDocument->debt_remaining,
+            'total_price' => $saleDocument->total_price,
         ]);
     }
 
     // Lihat detail nota (untuk print)
     public function show(SaleDocument $saleDocument)
     {
-        $saleDocument->load('user', 'sales.product');
+        $saleDocument->load('user', 'sales.product', 'buyer');
 
         return view('admin.sales.show', compact('saleDocument'));
     }
@@ -216,7 +332,7 @@ class SaleController extends Controller
     // History penjualan kasir
     public function history(Request $request)
     {
-        $query = SaleDocument::with('user', 'sales');
+        $query = SaleDocument::with('user', 'sales', 'buyer');
 
         // Text Search (Invoice)
         if ($request->has('invoice') && $request->invoice) {

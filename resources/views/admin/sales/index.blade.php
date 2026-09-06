@@ -23,10 +23,14 @@
                         >
                     </div>
 
+                    <div id="editingLockedHint" class="alert alert-warning py-2 px-3 mb-2 d-none" style="font-size: 0.8rem;">
+                        Tahap pembayaran aktif. Kembali ke keranjang untuk menambah atau mengubah item.
+                    </div>
+
                     <!-- Tempat Hasil Pencarian (Muncul saat diketik) -->
                     <div id="searchResults" class="d-none">
                         <h6 class="fw-bold mb-2" style="color: #2563EB;">Hasil Pencarian</h6>
-                        <div class="list-group shadow-sm" id="productList" style="border: 1px solid #E2E8F0;\"></div>
+                        <div class="list-group shadow-sm" id="productList" style="border: 1px solid #E2E8F0;"></div>
                     </div>
                 </div>
             </div>
@@ -35,170 +39,285 @@
         <!-- KOLOM KANAN: Keranjang & Panel Pembayaran -->
         <div class="col-md-5 col-lg-4" style="display: flex; flex-direction: column;">
             <div class="card border-0 shadow-sm pos-cart-panel">
-                <!-- Header Cart (Dibuat Kontras Tinggi dengan Text Explicit White) -->
                 <div class="card-header text-white d-flex justify-content-between align-items-center py-1.5 px-3 border-0" style="background-color: #172033;">
                     <div class="d-flex align-items-center gap-2">
                         <span style="font-size: 1.1rem;">🧾</span>
-                        <h6 class="mb-0 fw-bold text-white fs-6 lh-1" style="font-size: 0.95rem;">Keranjang Belanja</h6>
+                        <h6 class="mb-0 fw-bold text-white fs-6 lh-1" id="panelStageTitle" style="font-size: 0.95rem;">Keranjang Belanja</h6>
                         <span class="badge" id="cartBadge" style="background-color: #2563EB; font-size: 0.7rem; padding: 0.25rem 0.5rem;">{{ count($cart) }}</span>
                     </div>
-                    <button class="btn btn-outline-light btn-sm py-1 px-1.5 fw-semibold d-flex align-items-center justify-content-center" onclick="clearCart()" title="Kosongkan Keranjang" style="font-size: 0.85rem; width: 1.75rem; height: 1.75rem;">
+                    <button class="btn btn-outline-light btn-sm py-1 px-1.5 fw-semibold d-flex align-items-center justify-content-center" id="clearCartBtn" onclick="clearCart()" title="Kosongkan Keranjang" style="font-size: 0.85rem; width: 1.75rem; height: 1.75rem;">
                         🗑️
                     </button>
                 </div>
 
-                <!-- Body Item (Compact Table Style with Fixed Height & Scroll) -->
-                <div class="card-body p-0 pos-cart-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm align-middle mb-0">
-                            <thead class="table-light sticky-top">
-                                <tr style="font-size: 0.8rem;">
-                                    <th>Produk</th>
-                                    <th style="width: 60px;">Qty</th>
-                                    <th style="width: 65px;">Diskon</th>
-                                    <th class="text-end">Subtotal</th>
-                                    <th style="width: 28px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="cartItems">
-                                @if(empty($cart))
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">Keranjang masih kosong</td>
-                                </tr>
-                                @else
-                                    @foreach($cart as $item)
-                                    <tr id="cart-{{ $item['product_id'] }}" style="font-size: 0.8rem;">
-                                        <td style="padding: 0.35rem 0.5rem;">
-                                            <div class="fw-bold text-truncate" style="max-width: 100px; font-size: 0.8rem;" title="{{ $item['name'] }}">{{ $item['name'] }}</div>
-                                            @if($item['auto_discount'] ?? 0)
-                                            <small class="text-decoration-line-through" style="color: #94A3B8; font-size: 0.65rem;">Rp {{ number_format($item['selling_price'], 0, ',', '.') }}</small>
-                                            <small class="text-muted" style="display: block; font-size: 0.65rem; color: #059669; font-weight: 600;">→ Rp {{ number_format($item['selling_price'] - ($item['auto_discount'] ?? 0), 0, ',', '.') }}</small>
-                                            @else
-                                            <small class="text-muted" style="font-size: 0.65rem;">@ Rp {{ number_format($item['selling_price'], 0, ',', '.') }}</small>
-                                            @endif
-                                        </td>
-                                        <td style="padding: 0.25rem 0.25rem;">
-                                            <input 
-                                                type="number" 
-                                                class="form-control form-control-sm px-1 text-center quantity-input" 
-                                                value="{{ $item['quantity'] }}" 
-                                                min="1"
-                                                data-product-id="{{ $item['product_id'] }}"
-                                                onchange="updateCartItem(this)"
-                                                style="font-size: 0.75rem; padding: 0.2rem 0.25rem; height: 28px;"
-                                            >
-                                        </td>
-                                        <td style="padding: 0.25rem 0.25rem;">
-                                            <input 
-                                                type="number" 
-                                                class="form-control form-control-sm px-1 text-center discount-input" 
-                                                value="{{ $item['manual_discount'] ?? 0 }}" 
-                                                min="0"
-                                                placeholder="+"
-                                                data-product-id="{{ $item['product_id'] }}"
-                                                onchange="updateCartItem(this)"
-                                                style="font-size: 0.75rem; padding: 0.2rem 0.25rem; height: 28px;"
-                                            >
-                                        </td>
-                                        <td class="text-end fw-bold" style="padding: 0.35rem 0.5rem; font-size: 0.8rem;">
-                                            Rp {{ number_format(($item['selling_price'] - $item['discount']) * $item['quantity'], 0, ',', '.') }}
-                                        </td>
-                                        <td class="text-center" style="padding: 0.25rem 0.1rem;">
-                                            <button class="btn btn-link p-0" onclick="removeFromCart({{ $item['product_id'] }})" style="color: #E5484D; text-decoration: none; font-weight: bold; font-size: 1.1rem; line-height: 1;">&times;</button>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                @endif
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Footer Summary (Selalu Terkunci di Bawah) -->
-                <div class="card-footer border-top p-2" style="background-color: #FFFFFF;">
-                    @php
-                    $subtotal_gross = 0;  // Sebelum diskon (KOTOR)
-                    $discount_total = 0;
-                    $total_qty = 0;
-                    foreach($cart as $item) {
-                        $auto_discount = $item['auto_discount'] ?? 0;
-                        $manual_discount = $item['manual_discount'] ?? 0;
-                        $total_discount = $auto_discount + $manual_discount;
-                        
-                        $subtotal_gross += $item['selling_price'] * $item['quantity'];  // KOTOR: harga asli
-                        $discount_total += $total_discount * $item['quantity'];
-                        $total_qty += $item['quantity'];
-                    }
-                    $total = $subtotal_gross - $discount_total;  // FINAL: Gross - Diskon
-                    @endphp
-
-                    <div class="d-flex justify-content-between" style="font-size: 0.7rem; color: #64748B; margin-bottom: 0.25rem; border-top: 1px solid #E2E8F0; padding-top: 0.25rem;">
-                        <span>Subtotal (Kotor):</span>
-                        <span id="subtotalDisplay">Rp {{ number_format($subtotal_gross, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between" style="font-size: 0.7rem; color: #64748B; margin-bottom: 0.25rem;">
-                        <span style="color: #1E293B; font-weight: 500;">Total Diskon:</span>
-                        <span id="discountDisplay" style="color: #E5484D;">-Rp {{ number_format($discount_total, 0, ',', '.') }}</span>
-                    </div>
-                                        
-                    <div class="d-flex justify-content-between" style="font-size: 0.7rem; color: #64748B; margin-bottom: 0.25rem;">
-                        <span style="color: #1E293B; font-weight: 500;">Total Qty:</span>
-                        <span id="totalQtyDisplay">{{ $total_qty }}</span>
-                    </div>
-
-                    <div class="d-flex justify-content-between align-items-center p-1.5 rounded" style="background-color: #EFF6FF; border: 1.5px solid #2563EB; margin-bottom: 0.25rem;">
-                        <span class="fw-bold" style="color: #1E293B; font-size: 0.8rem;">💰 TOTAL:</span>
-                        <span class="fw-bold" id="totalDisplay" style="font-size: 1.1rem; color: #2563EB;">Rp {{ number_format($total, 0, ',', '.') }}</span>
-                    </div>
-
-                    <div class="row g-1 mb-1.5" style="margin-top: 1rem;">
-                        <div class="col-6">
-                            <label for="paymentMethod" class="form-label mb-0" style="font-size: 0.65rem; font-weight: bold; display: block;">Bayar</label>
-                            <select class="form-select" id="paymentMethod" style="font-size: 0.7rem; padding: 0.2rem 0.35rem; height: 28px;">
-                                <option value="cash" selected>💵 Tunai</option>
-                                <option value="qris">📱 QRIS</option>
-                                <option value="transfer">🏦 Transfer</option>
-                            </select>
+                <div class="card-body p-0 d-flex flex-column">
+                    <div id="stage-cart" class="stage-panel d-flex flex-column h-100">
+                        <div class="stage-body pos-cart-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm align-middle mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr style="font-size: 0.8rem;">
+                                            <th>Produk</th>
+                                            <th style="width: 60px;">Qty</th>
+                                            <th style="width: 65px;">Diskon</th>
+                                            <th class="text-end">Subtotal</th>
+                                            <th style="width: 28px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cartItems">
+                                        @if(empty($cart))
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">Keranjang masih kosong</td>
+                                        </tr>
+                                        @else
+                                            @foreach($cart as $item)
+                                            <tr id="cart-{{ $item['product_id'] }}" style="font-size: 0.8rem;">
+                                                <td style="padding: 0.35rem 0.5rem;">
+                                                    <div class="fw-bold text-truncate" style="max-width: 100px; font-size: 0.8rem;" title="{{ $item['name'] }}">{{ $item['name'] }}</div>
+                                                    @if($item['auto_discount'] ?? 0)
+                                                    <small class="text-decoration-line-through" style="color: #94A3B8; font-size: 0.65rem;">Rp {{ number_format($item['selling_price'], 0, ',', '.') }}</small>
+                                                    <small class="text-muted" style="display: block; font-size: 0.65rem; color: #059669; font-weight: 600;">→ Rp {{ number_format($item['selling_price'] - ($item['auto_discount'] ?? 0), 0, ',', '.') }}</small>
+                                                    @else
+                                                    <small class="text-muted" style="font-size: 0.65rem;">@ Rp {{ number_format($item['selling_price'], 0, ',', '.') }}</small>
+                                                    @endif
+                                                </td>
+                                                <td style="padding: 0.25rem 0.25rem;">
+                                                    <input
+                                                        type="number"
+                                                        class="form-control form-control-sm px-1 text-center quantity-input"
+                                                        value="{{ $item['quantity'] }}"
+                                                        min="1"
+                                                        data-product-id="{{ $item['product_id'] }}"
+                                                        onchange="updateCartItem(this)"
+                                                        style="font-size: 0.75rem; padding: 0.2rem 0.25rem; height: 28px;"
+                                                    >
+                                                </td>
+                                                <td style="padding: 0.25rem 0.25rem;">
+                                                    <input
+                                                        type="number"
+                                                        class="form-control form-control-sm px-1 text-center discount-input"
+                                                        value="{{ $item['manual_discount'] ?? 0 }}"
+                                                        min="0"
+                                                        placeholder="+"
+                                                        data-product-id="{{ $item['product_id'] }}"
+                                                        onchange="updateCartItem(this)"
+                                                        style="font-size: 0.75rem; padding: 0.2rem 0.25rem; height: 28px;"
+                                                    >
+                                                </td>
+                                                <td class="text-end fw-bold" style="padding: 0.35rem 0.5rem; font-size: 0.8rem;">
+                                                    Rp {{ number_format(($item['selling_price'] - $item['discount']) * $item['quantity'], 0, ',', '.') }}
+                                                </td>
+                                                <td class="text-center" style="padding: 0.25rem 0.1rem;">
+                                                    <button class="btn btn-link p-0 remove-item-btn" onclick="removeFromCart({{ $item['product_id'] }})" style="color: #E5484D; text-decoration: none; font-weight: bold; font-size: 1.1rem; line-height: 1;">&times;</button>
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        @endif
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <label for="paidAmount" class="form-label mb-0" style="font-size: 0.65rem; font-weight: bold; display: block;">Terima</label>
-                            <input 
-                                type="number" 
-                                id="paidAmount" 
-                                class="form-control text-end fw-bold" 
-                                placeholder="0"
-                                oninput="calculateChange()"
-                                style="font-size: 0.7rem; padding: 0.2rem 0.35rem; height: 28px;"
+
+                        <div class="stage-footer card-footer border-top p-2" style="background-color: #FFFFFF;">
+                            @php
+                            $subtotal_gross = 0;
+                            $discount_total = 0;
+                            $total_qty = 0;
+                            foreach($cart as $item) {
+                                $auto_discount = $item['auto_discount'] ?? 0;
+                                $manual_discount = $item['manual_discount'] ?? 0;
+                                $total_discount = $auto_discount + $manual_discount;
+                                $subtotal_gross += $item['selling_price'] * $item['quantity'];
+                                $discount_total += $total_discount * $item['quantity'];
+                                $total_qty += $item['quantity'];
+                            }
+                            $total = $subtotal_gross - $discount_total;
+                            @endphp
+
+                            <div class="d-flex justify-content-between" style="font-size: 0.7rem; color: #64748B; margin-bottom: 0.25rem; border-top: 1px solid #E2E8F0; padding-top: 0.25rem;">
+                                <span>Subtotal (Kotor):</span>
+                                <span id="subtotalDisplay">Rp {{ number_format($subtotal_gross, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size: 0.7rem; color: #64748B; margin-bottom: 0.25rem;">
+                                <span style="color: #1E293B; font-weight: 500;">Total Diskon:</span>
+                                <span id="discountDisplay" style="color: #E5484D;">-Rp {{ number_format($discount_total, 0, ',', '.') }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between" style="font-size: 0.7rem; color: #64748B; margin-bottom: 0.25rem;">
+                                <span style="color: #1E293B; font-weight: 500;">Total Qty:</span>
+                                <span id="totalQtyDisplay">{{ $total_qty }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center p-1.5 rounded" style="background-color: #EFF6FF; border: 1.5px solid #2563EB; margin-bottom: 0.5rem;">
+                                <span class="fw-bold" style="color: #1E293B; font-size: 0.8rem;">💰 TOTAL:</span>
+                                <span class="fw-bold" id="totalDisplay" style="font-size: 1.1rem; color: #2563EB;">Rp {{ number_format($total, 0, ',', '.') }}</span>
+                            </div>
+
+                            <button
+                                class="w-100 fw-bold shadow-sm"
+                                id="proceedPaymentBtn"
+                                onclick="goToPaymentStage()"
+                                style="font-size: 0.8rem; padding: 0.45rem 0.5rem; background-color: #2563EB; color: white; border: none; border-radius: 0.375rem; transition: background-color 0.15s ease;"
+                                onmouseover="this.style.backgroundColor='#1D4ED8'"
+                                onmouseout="this.style.backgroundColor='#2563EB'"
+                                @if(empty($cart)) disabled @endif
                             >
+                                Lanjut Pembayaran
+                            </button>
                         </div>
                     </div>
 
-                    <!-- Quick Cash Buttons -->
-                    <div class="d-flex gap-0.5 mb-2" style="font-size: 0.65rem; margin-top: 1rem;">
-                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1 py-0" onclick="setQuickCash('exact')" style="padding: 0.2rem 0.3rem !important; height: 28px; line-height: 1.4; margin: 0.15rem;">💵 Pas</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1 py-0" onclick="setQuickCash(50000)" style="padding: 0.2rem 0.3rem !important; height: 28px; line-height: 1.4; margin: 0.15rem;">💵 50rb</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1 py-0" onclick="setQuickCash(100000)" style="padding: 0.2rem 0.3rem !important; height: 28px; line-height: 1.4; margin: 0.15rem;">💵 100rb</button>
+                    <div id="stage-payment" class="stage-panel d-none d-flex flex-column h-100">
+                        <div class="stage-body p-3 overflow-auto">
+                            <button type="button" class="btn btn-link btn-sm p-0 mb-3 text-decoration-none" onclick="backToCartStage()">← Kembali ke keranjang</button>
+
+                            <div class="rounded p-2 mb-3" style="background: #F8FAFC; border: 1px solid #E2E8F0;">
+                                <div class="d-flex justify-content-between" style="font-size: 0.8rem;">
+                                    <span>Total Item:</span>
+                                    <strong id="paymentSummaryQty">0</strong>
+                                </div>
+                                <div class="d-flex justify-content-between" style="font-size: 0.95rem;">
+                                    <span>Total Bayar:</span>
+                                    <strong id="paymentSummaryTotal" style="color:#2563EB;">Rp 0</strong>
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="buyerId" value="">
+                            <div class="mb-3 position-relative">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <label for="buyerSearchInput" class="form-label fw-bold mb-0">Pelanggan <span class="text-muted fw-normal">- opsional</span></label>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="toggleNewBuyerForm()">+ Pelanggan baru</button>
+                                </div>
+                                <input type="text" id="buyerSearchInput" class="form-control form-control-sm" placeholder="Pelanggan umum">
+                                <small id="buyerSelectedHint" class="text-muted d-block mt-1">Bayar penuh boleh tanpa profil pelanggan.</small>
+                                <div id="buyerSearchResults" class="list-group d-none position-absolute w-100 shadow-sm" style="z-index: 20; max-height: 220px; overflow-y: auto;"></div>
+
+                                <div id="newBuyerForm" class="mt-2 p-2 rounded border d-none" style="background-color: #F8FAFC;">
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <input type="text" id="newBuyerName" class="form-control form-control-sm" placeholder="Nama pelanggan">
+                                        </div>
+                                        <div class="col-12">
+                                            <input type="text" id="newBuyerPhone" class="form-control form-control-sm" placeholder="No. HP (opsional)">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="saveNewBuyer()">Simpan Pelanggan</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleNewBuyerForm(false)">Batal</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold mb-2">Jenis Pembayaran</label>
+                                <input type="hidden" id="paymentType" value="full">
+                                <div class="d-flex gap-2">
+                                    <button type="button" id="paymentTypeBtnFull" class="btn btn-sm btn-primary grow" onclick="setPaymentType('full')">Bayar penuh</button>
+                                    <button type="button" id="paymentTypeBtnDebt" class="btn btn-sm btn-outline-secondary grow" onclick="setPaymentType('debt')">Hutang</button>
+                                </div>
+                            </div>
+
+                            <div id="fullPaymentSection">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <label for="paymentMethod" class="form-label mb-1" style="font-size: 0.75rem; font-weight: 600;">Metode</label>
+                                        <select class="form-select form-select-sm" id="paymentMethod">
+                                            <option value="cash" selected>💵 Tunai</option>
+                                            <option value="qris">📱 QRIS</option>
+                                            <option value="transfer">🏦 Transfer</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="paidAmount" class="form-label mb-1" style="font-size: 0.75rem; font-weight: 600;">Uang Diterima</label>
+                                        <input
+                                            type="number"
+                                            id="paidAmount"
+                                            class="form-control form-control-sm text-end fw-bold"
+                                            placeholder="0"
+                                            oninput="calculateChange()"
+                                        >
+                                    </div>
+                                </div>
+
+                                <div class="d-flex gap-1 mb-2" style="font-size: 0.7rem;">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary grow" onclick="setQuickCash('exact')">💵 Pas</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary grow" onclick="setQuickCash(50000)">💵 50rb</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary grow" onclick="setQuickCash(100000)">💵 100rb</button>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="font-size: 0.8rem; background-color: #F8FAFC; border: 1px solid #E2E8F0;">
+                                    <span class="fw-bold" style="color: #1E293B;">Kembalian:</span>
+                                    <span class="fw-bold" id="changeDisplay" style="color: #059669;">Rp 0</span>
+                                </div>
+                            </div>
+
+                            <div id="debtPaymentSection" class="d-none">
+                                <div class="mb-2">
+                                    <label for="debtDueDate" class="form-label mb-1" style="font-size: 0.75rem; font-weight: 600;">Jatuh Tempo *</label>
+                                    <input type="date" id="debtDueDate" class="form-control form-control-sm">
+                                </div>
+                                <div class="mb-2">
+                                    <label for="debtDownPayment" class="form-label mb-1" style="font-size: 0.75rem; font-weight: 600;">Pembayaran Awal</label>
+                                    <input type="number" id="debtDownPayment" class="form-control form-control-sm" value="0" min="0" oninput="handleDebtDownPaymentInput()">
+                                </div>
+
+                                <div id="debtMethodWrapper" class="mb-2 d-none">
+                                    <label for="debtPaymentMethod" class="form-label mb-1" style="font-size: 0.75rem; font-weight: 600;">Metode Pembayaran Awal</label>
+                                    <select class="form-select form-select-sm" id="debtPaymentMethod">
+                                        <option value="cash" selected>💵 Tunai</option>
+                                        <option value="qris">📱 QRIS</option>
+                                        <option value="transfer">🏦 Transfer</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-2">
+                                    <label for="debtNote" class="form-label mb-1" style="font-size: 0.75rem; font-weight: 600;">Catatan</label>
+                                    <textarea id="debtNote" class="form-control form-control-sm" rows="2" placeholder="Catatan opsional"></textarea>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center p-2 rounded" style="font-size: 0.8rem; background-color: #FFF7ED; border: 1px solid #FDBA74;">
+                                    <span class="fw-bold" style="color: #9A3412;">Sisa Hutang:</span>
+                                    <span class="fw-bold" id="debtRemainingDisplay" style="color: #C2410C;">Rp 0</span>
+                                </div>
+                            </div>
+
+                            <div id="checkoutError" class="alert alert-danger py-2 px-3 mt-3 d-none" style="font-size: 0.8rem;"></div>
+                        </div>
+
+                        <div class="stage-footer card-footer border-top p-2" style="background-color: #FFFFFF;">
+                            <button
+                                class="w-100 fw-bold shadow-sm"
+                                id="confirmCheckoutBtn"
+                                onclick="processCheckout()"
+                                style="font-size: 0.85rem; padding: 0.5rem; background-color: #059669; color: white; border: none; border-radius: 0.375rem;"
+                                @if(empty($cart)) disabled @endif
+                            >
+                                Simpan Pembayaran
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Status Kembalian -->
-                    <div class="d-flex justify-content-between align-items-center mb-2 p-1.5 rounded" style="font-size: 0.7rem; background-color: #F8FAFC; border: 1px solid #E2E8F0;">
-                        <span class="fw-bold" style="color: #1E293B;">Kembali:</span>
-                        <span class="fw-bold" id="changeDisplay" style="color: #059669;">Rp 0</span>
-                    </div>
+                    <div id="stage-success" class="stage-panel d-none d-flex flex-column h-100">
+                        <div class="stage-body p-3 overflow-auto">
+                            <div class="text-center mb-3">
+                                <div style="font-size: 2rem;">✅</div>
+                                <h6 class="fw-bold mb-1">Transaksi Berhasil</h6>
+                                <p class="text-muted mb-0" id="successInvoice">-</p>
+                            </div>
 
-                    <!-- Action Button -->
-                    <button 
-                        class="w-100 fw-bold shadow-sm" 
-                        id="checkoutBtn"
-                        onclick="processCheckout()"
-                        style="font-size: 0.8rem; padding: 0.4rem 0.5rem; background-color: #059669; color: white; border: none; border-radius: 0.375rem; transition: background-color 0.15s ease; position: relative; height: 32px;"
-                        onmouseover="this.style.backgroundColor='#047857'" 
-                        onmouseout="this.style.backgroundColor='#059669'"
-                        @if(empty($cart)) disabled @endif
-                    >
-                        ✓ Bayar
-                        <kbd style="position: absolute; right: 0.3rem; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.2); padding: 0.1rem 0.25rem; border-radius: 0.2rem; font-size: 0.6rem; font-family: monospace;">Enter</kbd>
-                    </button>
+                            <div class="rounded p-3" style="background:#F8FAFC; border:1px solid #E2E8F0;">
+                                <div class="d-flex justify-content-between mb-1"><span>Total:</span><strong id="successTotal">Rp 0</strong></div>
+                                <div class="d-flex justify-content-between mb-1 d-none" id="successBuyerRow"><span>Pelanggan:</span><strong id="successBuyer">Pelanggan umum</strong></div>
+                                <div class="d-flex justify-content-between mb-1"><span id="successMetaLabel">Kembalian:</span><strong id="successMetaValue">Rp 0</strong></div>
+                                <div class="d-flex justify-content-between"><span>Status:</span><strong id="successStatus">Lunas</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="stage-footer card-footer border-top p-2" style="background-color: #FFFFFF;">
+                            <div class="d-flex gap-2">
+                                <a href="#" id="successReceiptLink" class="btn btn-outline-primary btn-sm w-50" target="_blank">Lihat Struk</a>
+                                <button type="button" class="btn btn-success btn-sm w-50" onclick="startNewTransaction()">Transaksi Baru</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -328,6 +447,20 @@
     border-top: 1px solid #E2E8F0;
 }
 
+.stage-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.stage-body {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.stage-footer {
+    flex: 0 0 auto;
+}
+
     /* Row form pembayaran harus mengikuti tinggi kontennya sendiri */
     .pos-cart-panel .card-footer .row {
         height: auto;
@@ -351,28 +484,120 @@
         -webkit-appearance: none; 
         margin: 0; 
     }
+
+    @media (max-width: 767.98px) {
+        .container-fluid.pos-wrapper {
+            overflow: auto;
+        }
+
+        .pos-wrapper > .row {
+            height: auto;
+        }
+
+        .pos-cart-panel {
+            height: auto;
+            min-height: 520px;
+            max-height: none;
+        }
+    }
 </style>
 
 <script>
-    // Autofocus kembali ke kolom search setelah tindakan
-    function focusSearch() {
-        const searchInput = document.getElementById('productSearch');
-        searchInput.focus();
-        searchInput.select();
+    let currentStage = 'cart';
+    let isSubmittingCheckout = false;
+    let buyerSearchTimeout = null;
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount || 0);
     }
 
-    // Direct add product tanpa prompt browser
+    function focusSearch() {
+        const searchInput = document.getElementById('productSearch');
+        if (!searchInput.disabled) {
+            searchInput.focus();
+            searchInput.select();
+        }
+    }
+
+    function getCurrentTotal() {
+        const totalText = document.getElementById('totalDisplay').textContent.replace(/[^0-9]/g, '');
+        return parseInt(totalText) || 0;
+    }
+
+    function getCurrentQty() {
+        return parseInt(document.getElementById('totalQtyDisplay').textContent) || 0;
+    }
+
+    function setStage(stage) {
+        currentStage = stage;
+        document.getElementById('stage-cart').classList.toggle('d-none', stage !== 'cart');
+        document.getElementById('stage-payment').classList.toggle('d-none', stage !== 'payment');
+        document.getElementById('stage-success').classList.toggle('d-none', stage !== 'success');
+        updatePanelHeader(stage);
+
+        const lockEditing = stage === 'payment';
+        document.getElementById('productSearch').disabled = lockEditing;
+        document.getElementById('editingLockedHint').classList.toggle('d-none', !lockEditing);
+        if (lockEditing) {
+            document.getElementById('searchResults').classList.add('d-none');
+        }
+
+        if (stage === 'payment') {
+            updatePaymentSummary();
+            calculateChange();
+            handleDebtDownPaymentInput();
+        }
+    }
+
+    function updatePanelHeader(stage) {
+        const title = document.getElementById('panelStageTitle');
+        const clearBtn = document.getElementById('clearCartBtn');
+        const badge = document.getElementById('cartBadge');
+
+        if (stage === 'payment') {
+            title.textContent = 'Pembayaran';
+            clearBtn.classList.add('d-none');
+            badge.classList.add('d-none');
+            return;
+        }
+
+        if (stage === 'success') {
+            title.textContent = 'Transaksi Berhasil';
+            clearBtn.classList.add('d-none');
+            badge.classList.add('d-none');
+            return;
+        }
+
+        title.textContent = 'Keranjang Belanja';
+        clearBtn.classList.remove('d-none');
+        badge.classList.remove('d-none');
+    }
+
+    function showCheckoutError(message) {
+        const el = document.getElementById('checkoutError');
+        el.textContent = message;
+        el.classList.remove('d-none');
+    }
+
+    function clearCheckoutError() {
+        const el = document.getElementById('checkoutError');
+        el.textContent = '';
+        el.classList.add('d-none');
+    }
+
     function addProductToCart(productId) {
+        if (currentStage !== 'cart') {
+            alert('Sedang di tahap pembayaran. Kembali ke keranjang untuk menambah item.');
+            return;
+        }
+
         fetch('{{ route("sales.add-to-cart") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({
-                product_id: productId,
-                quantity: 1 // Default langsung 1, ubah via tabel jika ingin tambah
-            })
+            body: JSON.stringify({ product_id: productId, quantity: 1 })
         })
         .then(res => res.json())
         .then(data => {
@@ -384,21 +609,26 @@
         .catch(err => console.error(err));
     }
 
-    // Render ulang isi tabel keranjang belanja
     function updateCartDisplay(cart) {
         const cartItemsBody = document.getElementById('cartItems');
-        const checkoutBtn = document.getElementById('checkoutBtn');
+        const proceedPaymentBtn = document.getElementById('proceedPaymentBtn');
+        const confirmCheckoutBtn = document.getElementById('confirmCheckoutBtn');
         const cartBadge = document.getElementById('cartBadge');
 
         if (!cart || Object.keys(cart).length === 0) {
             cartItemsBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Keranjang masih kosong</td></tr>';
-            checkoutBtn.disabled = true;
+            proceedPaymentBtn.disabled = true;
+            confirmCheckoutBtn.disabled = true;
             cartBadge.textContent = '0';
             updateCartSummary({});
+            if (currentStage === 'payment') {
+                backToCartStage();
+            }
             return;
         }
 
-        checkoutBtn.disabled = false;
+        proceedPaymentBtn.disabled = false;
+        confirmCheckoutBtn.disabled = false;
         let html = '';
 
         for (const [productId, item] of Object.entries(cart)) {
@@ -406,7 +636,7 @@
             const manualDiscount = item.manual_discount || 0;
             const totalDiscount = autoDiscount + manualDiscount;
             const subtotal = (item.selling_price - totalDiscount) * item.quantity;
-            
+
             let priceDisplayHtml = '';
             if (autoDiscount > 0) {
                 priceDisplayHtml = `
@@ -416,7 +646,7 @@
             } else {
                 priceDisplayHtml = `<small class="text-muted">@ Rp ${formatCurrency(item.selling_price)}</small>`;
             }
-            
+
             html += `
                 <tr id="cart-${productId}">
                     <td>
@@ -424,20 +654,20 @@
                         ${priceDisplayHtml}
                     </td>
                     <td>
-                        <input 
-                            type="number" 
-                            class="form-control form-control-sm px-1 text-center quantity-input" 
-                            value="${item.quantity}" 
+                        <input
+                            type="number"
+                            class="form-control form-control-sm px-1 text-center quantity-input"
+                            value="${item.quantity}"
                             min="1"
                             data-product-id="${productId}"
                             onchange="updateCartItem(this)"
                         >
                     </td>
                     <td>
-                        <input 
-                            type="number" 
-                            class="form-control form-control-sm px-1 text-center discount-input" 
-                            value="${manualDiscount}" 
+                        <input
+                            type="number"
+                            class="form-control form-control-sm px-1 text-center discount-input"
+                            value="${manualDiscount}"
                             min="0"
                             placeholder="Tambah"
                             data-product-id="${productId}"
@@ -445,11 +675,9 @@
                             style="font-size: 0.75rem;"
                         >
                     </td>
-                    <td class="text-end fw-bold">
-                        Rp ${formatCurrency(subtotal)}
-                    </td>
+                    <td class="text-end fw-bold">Rp ${formatCurrency(subtotal)}</td>
                     <td class="text-center">
-                        <button class=\"btn btn-link p-0\" onclick=\"removeFromCart(${productId})\" style=\"color: #E5484D; text-decoration: none; font-weight: bold; font-size: 1.3rem;\">&times;</button>
+                        <button class="btn btn-link p-0 remove-item-btn" onclick="removeFromCart(${productId})" style="color: #E5484D; text-decoration: none; font-weight: bold; font-size: 1.3rem;">&times;</button>
                     </td>
                 </tr>
             `;
@@ -461,10 +689,15 @@
     }
 
     function updateCartItem(input) {
+        if (currentStage !== 'cart') {
+            alert('Sedang di tahap pembayaran. Kembali ke keranjang untuk mengubah item.');
+            return;
+        }
+
         const productId = input.dataset.productId;
         const isQuantity = input.classList.contains('quantity-input');
-
         const data = { product_id: parseInt(productId) };
+
         if (isQuantity) {
             data.quantity = parseInt(input.value) || 1;
         } else {
@@ -481,11 +714,18 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) updateCartDisplay(data.cart);
+            if (data.success) {
+                updateCartDisplay(data.cart);
+            }
         });
     }
 
     function removeFromCart(productId) {
+        if (currentStage !== 'cart') {
+            alert('Sedang di tahap pembayaran. Kembali ke keranjang untuk mengubah item.');
+            return;
+        }
+
         fetch('{{ route("sales.remove-from-cart") }}', {
             method: 'DELETE',
             headers: {
@@ -496,58 +736,290 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) updateCartDisplay(data.cart);
+            if (data.success) {
+                updateCartDisplay(data.cart);
+            }
         });
     }
 
     function updateCartSummary(cart) {
-        let subtotalGross = 0;  // Sebelum diskon (KOTOR)
+        let subtotalGross = 0;
         let discountTotal = 0;
         let totalQty = 0;
 
-        for (const [id, item] of Object.entries(cart)) {
+        for (const item of Object.values(cart)) {
             const totalDiscount = (item.auto_discount || 0) + (item.manual_discount || 0);
-            subtotalGross += item.selling_price * item.quantity;  // KOTOR: harga asli
+            subtotalGross += item.selling_price * item.quantity;
             discountTotal += totalDiscount * item.quantity;
             totalQty += item.quantity;
         }
 
-        const total = subtotalGross - discountTotal;  // FINAL: Gross - Diskon
+        const total = subtotalGross - discountTotal;
 
         document.getElementById('totalQtyDisplay').textContent = totalQty;
         document.getElementById('subtotalDisplay').textContent = 'Rp ' + formatCurrency(subtotalGross);
         document.getElementById('discountDisplay').textContent = '-Rp ' + formatCurrency(discountTotal);
         document.getElementById('totalDisplay').textContent = 'Rp ' + formatCurrency(total);
 
+        updatePaymentSummary();
         calculateChange();
+        handleDebtDownPaymentInput();
+    }
+
+    function updatePaymentSummary() {
+        document.getElementById('paymentSummaryQty').textContent = getCurrentQty();
+        document.getElementById('paymentSummaryTotal').textContent = 'Rp ' + formatCurrency(getCurrentTotal());
     }
 
     function calculateChange() {
         const paidAmount = parseInt(document.getElementById('paidAmount').value) || 0;
-        const totalText = document.getElementById('totalDisplay').textContent.replace(/[^0-9]/g, '');
-        const total = parseInt(totalText) || 0;
-        
+        const total = getCurrentTotal();
         const change = paidAmount - total;
         const changeDisplay = document.getElementById('changeDisplay');
 
         if (change >= 0) {
             changeDisplay.textContent = 'Rp ' + formatCurrency(change);
-            changeDisplay.style.color = '#059669'; // Emerald
+            changeDisplay.style.color = '#059669';
         } else {
             changeDisplay.textContent = 'Kurang Rp ' + formatCurrency(Math.abs(change));
-            changeDisplay.style.color = '#DC3545'; // Soft red
+            changeDisplay.style.color = '#DC3545';
+        }
+    }
+
+    function handleDebtDownPaymentInput() {
+        const total = getCurrentTotal();
+        const downPayment = parseInt(document.getElementById('debtDownPayment').value) || 0;
+        const debtMethodWrapper = document.getElementById('debtMethodWrapper');
+        debtMethodWrapper.classList.toggle('d-none', downPayment <= 0);
+
+        const remaining = Math.max(total - downPayment, 0);
+        document.getElementById('debtRemainingDisplay').textContent = 'Rp ' + formatCurrency(remaining);
+    }
+
+    function goToPaymentStage() {
+        if (getCurrentTotal() <= 0) {
+            alert('Keranjang masih kosong.');
+            return;
+        }
+        setStage('payment');
+        clearCheckoutError();
+    }
+
+    function backToCartStage() {
+        setStage('cart');
+        clearCheckoutError();
+        focusSearch();
+    }
+
+    function setQuickCash(amount) {
+        const total = getCurrentTotal();
+        document.getElementById('paidAmount').value = amount === 'exact' ? total : amount;
+        calculateChange();
+    }
+
+    function getSelectedPaymentType() {
+        return document.getElementById('paymentType').value || 'full';
+    }
+
+    function setPaymentType(type) {
+        document.getElementById('paymentType').value = type;
+        syncPaymentTypeView();
+        clearCheckoutError();
+    }
+
+    function syncPaymentTypeView() {
+        const type = getSelectedPaymentType();
+        document.getElementById('fullPaymentSection').classList.toggle('d-none', type !== 'full');
+        document.getElementById('debtPaymentSection').classList.toggle('d-none', type !== 'debt');
+
+        document.getElementById('paymentTypeBtnFull').classList.toggle('btn-primary', type === 'full');
+        document.getElementById('paymentTypeBtnFull').classList.toggle('btn-outline-secondary', type !== 'full');
+        document.getElementById('paymentTypeBtnDebt').classList.toggle('btn-primary', type === 'debt');
+        document.getElementById('paymentTypeBtnDebt').classList.toggle('btn-outline-secondary', type !== 'debt');
+
+        const confirmBtn = document.getElementById('confirmCheckoutBtn');
+        confirmBtn.textContent = type === 'debt' ? 'Simpan Transaksi Hutang' : 'Simpan Pembayaran';
+    }
+
+    function selectBuyer(buyer) {
+        document.getElementById('buyerId').value = buyer?.id || '';
+        document.getElementById('buyerSearchInput').value = buyer ? buyer.name : '';
+
+        const hint = document.getElementById('buyerSelectedHint');
+        if (buyer) {
+            const phoneInfo = buyer.phone ? ' (' + buyer.phone + ')' : '';
+            hint.textContent = 'Dipilih: ' + buyer.name + phoneInfo;
+        } else {
+            hint.textContent = 'Bayar penuh boleh tanpa profil pelanggan.';
+        }
+
+        hideBuyerSearchResults();
+    }
+
+    function hideBuyerSearchResults() {
+        const results = document.getElementById('buyerSearchResults');
+        results.classList.add('d-none');
+        results.innerHTML = '';
+    }
+
+    function renderBuyerSearchResults(buyers) {
+        const results = document.getElementById('buyerSearchResults');
+        if (!buyers.length) {
+            results.innerHTML = '<div class="list-group-item small text-muted">Tidak ada pelanggan ditemukan</div>';
+            results.classList.remove('d-none');
+            return;
+        }
+
+        results.innerHTML = buyers.map((buyer) => {
+            const phone = buyer.phone ? ' - ' + buyer.phone : '';
+            const safeName = String(buyer.name).replace(/"/g, '&quot;');
+            const safePhone = String(buyer.phone || '').replace(/"/g, '&quot;');
+            return `<button type="button" class="list-group-item list-group-item-action buyer-option" data-id="${buyer.id}" data-name="${safeName}" data-phone="${safePhone}">${buyer.name}${phone}</button>`;
+        }).join('');
+        results.classList.remove('d-none');
+    }
+
+    function searchBuyers(query) {
+        fetch(`{{ route('buyers.search') }}?q=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(data => {
+                renderBuyerSearchResults(Array.isArray(data) ? data : []);
+            })
+            .catch(() => {
+                hideBuyerSearchResults();
+            });
+    }
+
+    function toggleNewBuyerForm(show) {
+        const form = document.getElementById('newBuyerForm');
+        const shouldShow = typeof show === 'boolean' ? show : form.classList.contains('d-none');
+        form.classList.toggle('d-none', !shouldShow);
+        if (shouldShow) {
+            document.getElementById('newBuyerName').focus();
+        }
+    }
+
+    function saveNewBuyer() {
+        const name = document.getElementById('newBuyerName').value.trim();
+        const phone = document.getElementById('newBuyerPhone').value.trim();
+
+        if (!name) {
+            showCheckoutError('Nama pelanggan baru wajib diisi.');
+            return;
+        }
+
+        fetch('{{ route("buyers.quick-store") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ name, phone })
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Gagal menambahkan pelanggan.');
+            }
+            return data.buyer;
+        })
+        .then((buyer) => {
+            selectBuyer(buyer);
+            document.getElementById('newBuyerName').value = '';
+            document.getElementById('newBuyerPhone').value = '';
+            toggleNewBuyerForm(false);
+            clearCheckoutError();
+        })
+        .catch((err) => {
+            showCheckoutError(err.message || 'Gagal menambahkan pelanggan.');
+        });
+    }
+
+    function startCheckoutLoading(loading) {
+        isSubmittingCheckout = loading;
+        const btn = document.getElementById('confirmCheckoutBtn');
+        if (loading) {
+            btn.disabled = true;
+            btn.dataset.originalText = btn.textContent;
+            btn.textContent = 'Menyimpan...';
+        } else {
+            btn.disabled = getCurrentTotal() <= 0;
+            btn.textContent = btn.dataset.originalText || btn.textContent;
         }
     }
 
     function processCheckout() {
-        const paymentMethod = document.getElementById('paymentMethod').value;
-        const paidAmount = parseInt(document.getElementById('paidAmount').value) || 0;
-        const total = parseInt(document.getElementById('totalDisplay').textContent.replace(/[^0-9]/g, '')) || 0;
-
-        if (paidAmount < total && paymentMethod === 'cash') {
-            alert('Uang yang diterima kurang dari total belanja!');
+        if (isSubmittingCheckout) {
             return;
         }
+
+        clearCheckoutError();
+
+        const total = getCurrentTotal();
+        const paymentType = getSelectedPaymentType();
+        const payload = { payment_type: paymentType };
+        const buyerId = parseInt(document.getElementById('buyerId').value) || null;
+        const buyerText = document.getElementById('buyerSearchInput').value.trim();
+
+        if (buyerText !== '' && !buyerId) {
+            showCheckoutError('Pilih pelanggan dari daftar atau gunakan tombol + Pelanggan baru.');
+            return;
+        }
+
+        if (buyerId) {
+            payload.buyer_id = buyerId;
+        }
+
+        if (paymentType === 'full') {
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const paidAmount = parseInt(document.getElementById('paidAmount').value) || 0;
+
+            if (paidAmount < total) {
+                showCheckoutError('Pembayaran kurang. Kekurangan tidak otomatis menjadi hutang.');
+                return;
+            }
+
+            payload.payment_method = paymentMethod;
+            payload.paid_amount = paidAmount;
+        } else {
+            const dueDate = document.getElementById('debtDueDate').value;
+            const downPayment = parseInt(document.getElementById('debtDownPayment').value) || 0;
+            const debtNote = document.getElementById('debtNote').value.trim();
+
+            if (!buyerId) {
+                showCheckoutError('Transaksi hutang wajib memilih pelanggan.');
+                return;
+            }
+            if (!dueDate) {
+                showCheckoutError('Tanggal jatuh tempo wajib diisi.');
+                return;
+            }
+            if (downPayment < 0) {
+                showCheckoutError('Pembayaran awal minimal 0.');
+                return;
+            }
+            if (downPayment > total) {
+                showCheckoutError('Pembayaran awal tidak boleh lebih besar dari total.');
+                return;
+            }
+            if (downPayment === total) {
+                setPaymentType('full');
+                document.getElementById('paidAmount').value = downPayment;
+                calculateChange();
+                showCheckoutError('Pembayaran awal sama dengan total. Silakan gunakan Bayar Penuh.');
+                return;
+            }
+
+            payload.due_date = dueDate;
+            payload.down_payment = downPayment;
+            payload.debt_note = debtNote;
+
+            if (downPayment > 0) {
+                payload.payment_method = document.getElementById('debtPaymentMethod').value;
+            }
+        }
+
+        startCheckoutLoading(true);
 
         fetch('{{ route("sales.checkout") }}', {
             method: 'POST',
@@ -555,44 +1027,85 @@
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({
-                payment_method: paymentMethod,
-                paid_amount: paidAmount
-            })
+            body: JSON.stringify(payload)
         })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = `/admin/sales/${data.sale_document_id}`;
-            } else {
-                alert(data.message || 'Transaksi gagal');
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Transaksi gagal disimpan');
             }
+            return data;
+        })
+        .then(data => {
+            document.getElementById('successInvoice').textContent = data.invoice_number;
+            document.getElementById('successTotal').textContent = 'Rp ' + formatCurrency(data.total_price || total);
+            document.getElementById('successReceiptLink').href = `/admin/sales/${data.sale_document_id}`;
+
+            const buyerRow = document.getElementById('successBuyerRow');
+            if (data.buyer_name) {
+                buyerRow.classList.remove('d-none');
+                document.getElementById('successBuyer').textContent = data.buyer_name;
+            } else {
+                buyerRow.classList.add('d-none');
+                document.getElementById('successBuyer').textContent = 'Pelanggan umum';
+            }
+
+            if (data.payment_type === 'debt') {
+                document.getElementById('successMetaLabel').textContent = 'Sisa Hutang:';
+                document.getElementById('successMetaValue').textContent = 'Rp ' + formatCurrency(data.debt_remaining || 0);
+                document.getElementById('successStatus').textContent = 'Pending Hutang';
+            } else {
+                document.getElementById('successMetaLabel').textContent = 'Kembalian:';
+                document.getElementById('successMetaValue').textContent = 'Rp ' + formatCurrency(data.change_amount || 0);
+                document.getElementById('successStatus').textContent = 'Lunas';
+            }
+
+            setStage('success');
+            updateCartDisplay({});
+        })
+        .catch(err => {
+            showCheckoutError(err.message || 'Gagal memproses checkout.');
+        })
+        .finally(() => {
+            startCheckoutLoading(false);
         });
     }
 
     function clearCart() {
-        if (!confirm('Kosongkan keranjang?')) return;
-        updateCartDisplay({});
-    }
-
-    function setQuickCash(amount) {
-        const totalText = document.getElementById('totalDisplay').textContent.replace(/[^0-9]/g, '');
-        const total = parseInt(totalText) || 0;
-        
-        if (amount === 'exact') {
-            document.getElementById('paidAmount').value = total;
-        } else {
-            document.getElementById('paidAmount').value = amount;
+        if (currentStage !== 'cart') {
+            alert('Kembali ke keranjang untuk mengosongkan item.');
+            return;
         }
-        calculateChange();
+        if (!confirm('Kosongkan keranjang?')) {
+            return;
+        }
+
+        fetch('{{ route("sales.clear-cart") }}', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateCartDisplay({});
+            }
+        });
     }
 
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount);
+    function startNewTransaction() {
+        window.location.href = '{{ route("sales.index") }}';
     }
 
-    // Live Search Event
-    document.getElementById('productSearch').addEventListener('input', function(e) {
+    document.getElementById('productSearch').addEventListener('input', function() {
+        if (currentStage !== 'cart') {
+            this.value = '';
+            document.getElementById('searchResults').classList.add('d-none');
+            return;
+        }
+
         const query = this.value.trim();
         const searchResults = document.getElementById('searchResults');
 
@@ -630,21 +1143,55 @@
             });
     });
 
-    // Keyboard Shortcuts (Ergonomi Kasir)
-    document.addEventListener('keydown', function(e) {
-        // Tekan F2 untuk fokus ke pencarian
-        if (e.key === 'F2') {
-            e.preventDefault();
-            focusSearch();
+    document.getElementById('buyerSearchInput').addEventListener('input', function() {
+        const query = this.value.trim();
+
+        if (query === '') {
+            selectBuyer(null);
+            return;
         }
-        // Tekan Enter untuk checkout
-        if (e.key === 'Enter' && document.activeElement.id === 'paidAmount') {
-            e.preventDefault();
-            const checkoutBtn = document.getElementById('checkoutBtn');
-            if (!checkoutBtn.disabled) {
-                processCheckout();
-            }
+
+        document.getElementById('buyerId').value = '';
+
+        clearTimeout(buyerSearchTimeout);
+        buyerSearchTimeout = setTimeout(() => {
+            searchBuyers(query);
+        }, 250);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('buyer-option')) {
+            selectBuyer({
+                id: e.target.dataset.id,
+                name: e.target.dataset.name,
+                phone: e.target.dataset.phone || null,
+            });
+            return;
+        }
+
+        const container = document.getElementById('buyerSearchInput').closest('.position-relative');
+        if (!container.contains(e.target)) {
+            hideBuyerSearchResults();
         }
     });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F2') {
+            e.preventDefault();
+            if (currentStage === 'cart') {
+                focusSearch();
+            }
+        }
+
+        if (e.key === 'Enter' && currentStage === 'payment' && document.activeElement.id === 'paidAmount') {
+            e.preventDefault();
+            processCheckout();
+        }
+    });
+
+    updatePanelHeader('cart');
+    syncPaymentTypeView();
+    updatePaymentSummary();
+    handleDebtDownPaymentInput();
 </script>
 @endsection

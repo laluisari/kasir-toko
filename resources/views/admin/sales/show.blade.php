@@ -37,6 +37,24 @@
                             <span>Metode:</span>
                             <strong>{{ strtoupper($saleDocument->payment_method) }}</strong>
                         </div>
+                        @if($saleDocument->buyer)
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Pelanggan:</span>
+                            <strong>{{ $saleDocument->buyer->name ?? '-' }}</strong>
+                        </div>
+                        @if(!empty($saleDocument->buyer->phone))
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>No. HP:</span>
+                            <strong>{{ $saleDocument->buyer->phone }}</strong>
+                        </div>
+                        @endif
+                        @endif
+                        @if(($saleDocument->payment_type ?? 'full') === 'debt')
+                        <div class="d-flex justify-content-between">
+                            <span>Jatuh Tempo:</span>
+                            <strong>{{ \Illuminate\Support\Carbon::parse($saleDocument->due_date)->format('d/m/Y') }}</strong>
+                        </div>
+                        @endif
                     </div>
 
                     <div class="receipt-divider"></div>
@@ -96,6 +114,21 @@
                             <span>Rp {{ number_format($calculated_gross_subtotal - $calculated_discount_total, 0, ',', '.') }}</span>
                         </div>
 
+                        @if(($saleDocument->payment_type ?? 'full') === 'debt')
+                        <div class="d-flex justify-content-between mb-1 pt-1">
+                            <span>Pembayaran Awal:</span>
+                            <strong>Rp {{ number_format($saleDocument->down_payment, 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold text-danger" style="font-size: 13px;">
+                            <span>Sisa Hutang:</span>
+                            <span>Rp {{ number_format($saleDocument->debt_remaining, 0, ',', '.') }}</span>
+                        </div>
+                        @if($saleDocument->debt_note)
+                        <div class="mt-2 small text-muted">
+                            Catatan: {{ $saleDocument->debt_note }}
+                        </div>
+                        @endif
+                        @else
                         <div class="d-flex justify-content-between mb-1 pt-1">
                             <span>Uang Diterima:</span>
                             <strong>Rp {{ number_format($saleDocument->paid_amount, 0, ',', '.') }}</strong>
@@ -104,6 +137,7 @@
                             <span>Kembalian:</span>
                             <span>Rp {{ number_format($saleDocument->change_amount, 0, ',', '.') }}</span>
                         </div>
+                        @endif
                     </div>
 
                     <div class="receipt-divider"></div>

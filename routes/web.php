@@ -1,7 +1,8 @@
 <?php
 
-use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BuyerController;
+use App\Http\Controllers\ExpenseController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -47,17 +48,34 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('users', App\Http\Controllers\UserController::class, [
             'except' => ['create', 'edit', 'show']
         ]);
+
+        Route::group(['prefix' => 'expense'], function () {
+            //admin/expense
+            Route::get('/', [ExpenseController::class, 'index'])->name('expense.index');
+            Route::post('/', [ExpenseController::class, 'addExpense'])->name('expense.add');
+            Route::get('search', [ExpenseController::class, 'search'])->name('expense.search');
+            Route::post('update/{id}', [ExpenseController::class, 'update'])->name('expense.update');
+            Route::get('delete/{id}', [ExpenseController::class, 'delete'])->name('expense.delete');
+        });
+
+        // Buyers Routes
+        Route::resource('buyers', BuyerController::class);
     });
 
     // Sale Routes - accessible to both admin and kasir
     Route::middleware(['role:admin,kasir'])->controller(App\Http\Controllers\SaleController::class)->group(function () {
         Route::get('/admin/sales', 'index')->name('sales.index');
         Route::get('/admin/sales/search', 'search')->name('sales.search');
+        Route::get('/admin/buyers-search', [BuyerController::class, 'search'])->name('buyers.search');
+        Route::post('/admin/buyers-quick-store', [BuyerController::class, 'quickStore'])->name('buyers.quick-store');
         Route::post('/admin/sales/add-to-cart', 'addToCart')->name('sales.add-to-cart');
         Route::put('/admin/sales/update-cart', 'updateCart')->name('sales.update-cart');
         Route::delete('/admin/sales/remove-from-cart', 'removeFromCart')->name('sales.remove-from-cart');
+        Route::delete('/admin/sales/clear-cart', 'clearCart')->name('sales.clear-cart');
         Route::post('/admin/sales/checkout', 'checkout')->name('sales.checkout');
         Route::get('/admin/sales/{saleDocument}', 'show')->name('sales.show');
         Route::get('/admin/sales-history', 'history')->name('sales.history');
+
+        
     });
 });
