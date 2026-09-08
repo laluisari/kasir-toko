@@ -1,4 +1,5 @@
 <aside class="sidebar">
+    @php $soLock = \App\Models\StockOpname::active()->exists(); @endphp
     <button type="button" class="sidebar-close-btn">
         <iconify-icon icon="radix-icons:cross-2"></iconify-icon>
     </button>
@@ -35,11 +36,16 @@
                             <i class="ri-circle-fill circle-icon text-warning-main w-auto"></i> Kategori
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('stock-opname.index') }}">
+                            <i class="ri-circle-fill circle-icon text-info-main w-auto"></i> Stock Opname
+                        </a>
+                    </li>
                 </ul>
             </li>
             @endif
 
-            <li class="dropdown">
+            <li class="dropdown" @if ($soLock) style="opacity: 0.45; pointer-events: none;" title="Penjualan terkunci — Stock Opname sedang berjalan." @endif>
                 <a href="javascript:void(0)">
                     <iconify-icon icon="solar:cart-3-outline" class="menu-icon"></iconify-icon>
                     <span>Penjualan</span>

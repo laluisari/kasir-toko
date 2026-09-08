@@ -13,7 +13,7 @@
                     
                     <!-- Header -->
                     <div class="text-center mb-3">
-                        <h5 class="fw-bold mb-1" style="font-family: 'Courier New', monospace;">🏪 TOKO SERBAGUNA</h5>
+                        <h5 class="fw-bold mb-1" style="font-family: 'Courier New', monospace;">TOKO SERBAGUNA</h5>
                         <div class="text-muted small">Jl. Raya No. 123</div>
                     </div>
 
@@ -153,12 +153,17 @@
 
             <!-- Action Buttons (Responsive & Compact) -->
             <div class="mt-3 d-flex gap-2 justify-content-center d-print-none">
+                <button id="printThermalBtn" class="btn btn-dark btn-sm flex-fill py-2 fw-semibold" onclick="printThermalReceipt()">
+                    Print Thermal
+                </button>
+                @if (config('thermal.print_mode') === 'browser')
                 <button class="btn btn-primary btn-sm flex-fill py-2 fw-semibold" onclick="printReceipt()">
                     🖨️ Print 
                 </button>
                 <button class="btn btn-secondary btn-sm flex-fill py-2 fw-semibold" onclick="downloadPDF()">
                     📄  PDF
                 </button>
+                @endif
                 <a href="{{ route('sales.index') }}" class="btn btn-success btn-sm flex-fill py-2 fw-semibold d-flex align-items-center justify-content-center">
                     🛒 New
                 </a>
@@ -175,12 +180,17 @@
     }
 
     #receipt {
-        max-width: 80mm;
+        max-width: 58mm;
         margin: auto;
         background: #ffffff;
     }
 
     @media print {
+        @page {
+            size: 58mm auto;
+            margin: 0;
+        }
+
         body * {
             visibility: hidden;
         }
@@ -193,7 +203,7 @@
             position: absolute;
             left: 0;
             top: 0;
-            width: 80mm;
+            width: 58mm;
             margin: 0;
             padding: 0;
             box-shadow: none !important;
@@ -207,6 +217,47 @@
 </style>
 
 <script>
+    const PRINT_MODE = @json(config('thermal.print_mode'));
+
+    async function printThermalReceipt() {
+        if (PRINT_MODE === 'browser') {
+            return printReceipt();
+        }
+
+        const button = document.getElementById('printThermalBtn');
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Printing...';
+        }
+
+        try {
+            const response = await fetch("{{ route('sales.print-thermal', $saleDocument) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Gagal mengirim data ke printer thermal.');
+            }
+
+            alert(data.message || 'Struk berhasil diprint.');
+        } catch (error) {
+            alert(error.message || 'Terjadi kesalahan saat print thermal.');
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Print Thermal';
+            }
+        }
+    }
+
     function printReceipt() {
         window.print();
     }

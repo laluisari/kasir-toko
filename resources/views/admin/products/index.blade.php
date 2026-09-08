@@ -37,6 +37,7 @@
                     <tr>
                         <th class="text-sm text-secondary-light fw-semibold" style="width:48px">#</th>
                         <th class="text-sm text-secondary-light fw-semibold">Nama</th>
+                        <th class="text-sm text-secondary-light fw-semibold">Barcode</th>
                         <th class="text-sm text-secondary-light fw-semibold">Category</th>
                         <th class="text-sm text-secondary-light fw-semibold">Harga Beli</th>
                         <th class="text-sm text-secondary-light fw-semibold">Harga Jual</th>
@@ -51,6 +52,15 @@
                         <tr style="transition: background-color 0.2s ease;" onmouseover="this.style.backgroundColor='rgba(0,0,0,0.02)'" onmouseout="this.style.backgroundColor='transparent'">
                             <td class="text-sm text-secondary-light">{{ $loop->iteration }}</td>
                             <td class="text-sm text-secondary-light fw-medium">{{ $product->name }}</td>
+                            <td class="text-sm text-secondary-light">
+                                @if ($product->barcode)
+                                    <span style="font-family: monospace; background-color: #f8fafc; padding: 0.25rem 0.75rem; border-radius: 0.25rem; border: 1px solid #e2e8f0;">
+                                        {{ $product->barcode }}
+                                    </span>
+                                @else
+                                    <span class="text-secondary-light" style="font-style: italic;">-</span>
+                                @endif
+                            </td>
                             <td class="text-sm text-secondary-light">
                                 @if ($product->category)
                                     <span style="background-color: #f0fdf4; color: #059669; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 500;">
@@ -75,6 +85,17 @@
                             <td class="text-sm text-secondary-light">{{ $product->created_at->format('d M Y') }}</td>
                             <td class="text-center">
                                 <div class="d-flex align-items-center justify-content-center gap-8">
+                                    <!-- Print Barcode Button -->
+                                    @php $hasBarcode = !empty($product->barcode); @endphp
+                                    <button type="button" data-id="{{ $product->id }}" data-name="{{ $product->name }}" data-barcode="{{ $product->barcode ?? '' }}" class="print-barcode-btn {{ $hasBarcode ? '' : 'print-disabled' }} d-flex align-items-center justify-content-center"
+                                            {{ $hasBarcode ? '' : 'disabled' }}
+                                            style="width: 36px; height: 36px; border-radius: 0.5rem; background-color: #eff6ff; border: 1.5px solid #bfdbfe; color: #2563eb; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
+                                            onmouseover="if(!this.disabled){this.style.backgroundColor='#2563eb'; this.style.color='white'; this.style.boxShadow='0 4px 12px rgba(37, 99, 235, 0.3)';}"
+                                            onmouseout="if(!this.disabled){this.style.backgroundColor='#eff6ff'; this.style.color='#2563eb'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)';}"
+                                            title="{{ $hasBarcode ? 'Cetak Barcode' : 'Barcode belum diisi' }}">
+                                        <iconify-icon icon="lucide:barcode" class="icon" style="font-size: 1.125rem;"></iconify-icon>
+                                    </button>
+
                                     <!-- Edit Button -->
                                     <button type="button" data-product="{{ json_encode($product->load('category')) }}" class="edit-btn d-flex align-items-center justify-content-center" 
                                             style="width: 36px; height: 36px; border-radius: 0.5rem; background-color: #f0fdf4; border: 1.5px solid #bbf7d0; color: #059669; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
@@ -99,7 +120,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center text-secondary-light py-40">
+                            <td colspan="10" class="text-center text-secondary-light py-40">
                                 <iconify-icon icon="lucide:inbox" class="d-block mx-auto mb-8" style="font-size:2.5rem; opacity:0.3;"></iconify-icon>
                                 <p class="mb-0">Belum ada data produk.</p>
                             </td>
@@ -444,6 +465,12 @@
 @endsection
 
 @section('scripts')
+<style>
+    .print-disabled {
+        opacity: 0.35;
+        cursor: not-allowed !important;
+    }
+</style>
 <script>
     let categories = {!! json_encode($categories) !!};
 
@@ -624,6 +651,54 @@
             if ($(this).val()) {
                 $(this).val(cleanRupiah($(this).val()));
             }
+        });
+    });
+
+    // Print Barcode Button
+    const PRINT_MODE = @json(config('thermal.print_mode'));
+
+    $('.print-barcode-btn').on('click', function() {
+        const button = this;
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+        const barcode = $(this).data('barcode') || '';
+
+        if (button.disabled || $(button).hasClass('print-disabled') || !barcode) {
+            alert('Produk ini belum punya kode barcode.');
+            return;
+        }
+
+        if (!confirm('Cetak barcode untuk "' + name + '"?')) return;
+
+        if (PRINT_MODE === 'browser') {
+            const labelUrl = "{{ route('products.barcode-label', ':id') }}".replace(':id', id) + '?copies=' + @json(config('thermal.barcode_copies'));
+            window.open(labelUrl, '_blank');
+            return;
+        }
+
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span id="printSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="width:0.9rem;height:0.9rem;"></span>';
+
+        fetch("{{ route('products.print-barcode', ':id') }}".replace(':id', id), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) {
+                throw new Error(data.message || 'Gagal cetak barcode.');
+            }
+            alert(data.message);
+        })
+        .catch(error => alert(error.message || 'Terjadi kesalahan saat cetak barcode.'))
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalHtml;
         });
     });
 </script>

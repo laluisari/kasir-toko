@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Models\Product;
 use App\Models\SaleDocument;
+use App\Models\StockOpname;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -141,6 +142,13 @@ class SaleController extends Controller
     // Checkout - proses pembayaran
     public function checkout(Request $request)
     {
+        if (StockOpname::active()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stock Opname sedang berlangsung. Transaksi penjualan ditunda sampai opname selesai.',
+            ], 403);
+        }
+
         $request->validate([
             'payment_type' => 'nullable|in:full,debt',
             'payment_method' => 'nullable|in:cash,qris,transfer',

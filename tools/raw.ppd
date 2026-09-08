@@ -1,0 +1,21 @@
+*PPD-Adobe: "4.3"
+*% ============================================================
+*% RPP02N / GEZHI 58mm thermal - ESC/POS raw passthrough queue
+*%   Pengganti 'raw queue' yang dihapus macOS modern.
+*%   Semua job dengan document-format=application/vnd.cups-raw
+*%   diteruskan VERBATIM ke printer (tanpa filter/driver).
+*% ============================================================
+*FormatVersion: "4.3"
+*FileVersion: "1.0"
+*LanguageEncoding: "ISOLatin1"
+*LanguageVersion: "English"
+*Manufacturer: "ESC/POS Thermal"
+*Product: "(RPP02N)"
+*PSVersion: "(3010.000) 0"
+*cupsFilter2: "application/vnd.cups-raw 0 -"
+*DefaultPageSize: 4x6
+*PageSize 4x6/4x6in: "<</PageSize[576 864]>>setpagedevice"
+*DefaultPaperDimension: 4x6
+*PageDimension 4x6/4x6in: "576 864"
+*NickName: "RPP02N ESC/POS (raw passthrough)"
+*ModelName: "RPP02N ESC/POS raw"

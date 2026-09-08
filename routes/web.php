@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\PrintController;
+use App\Http\Controllers\StockOpnameController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -45,6 +47,16 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('products', App\Http\Controllers\ProductController::class, [
             'except' => ['create', 'edit', 'show']
         ]);
+        Route::post('/products/{product}/print-barcode', [PrintController::class, 'printBarcode'])->name('products.print-barcode');
+        Route::get('/products/{product}/barcode-label', [PrintController::class, 'barcodeLabel'])->name('products.barcode-label');
+
+        Route::get('/stock-opname', [StockOpnameController::class, 'index'])->name('stock-opname.index');
+        Route::post('/stock-opname', [StockOpnameController::class, 'store'])->name('stock-opname.store');
+        Route::get('/stock-opname/{stockOpname}', [StockOpnameController::class, 'show'])->name('stock-opname.show');
+        Route::get('/stock-opname/{stockOpname}/counting', [StockOpnameController::class, 'counting'])->name('stock-opname.counting');
+        Route::post('/stock-opname/{stockOpname}/item/{product}', [StockOpnameController::class, 'item'])->name('stock-opname.item');
+        Route::post('/stock-opname/{stockOpname}/finish', [StockOpnameController::class, 'finish'])->name('stock-opname.finish');
+        Route::post('/stock-opname/{stockOpname}/cancel', [StockOpnameController::class, 'cancel'])->name('stock-opname.cancel');
         Route::resource('users', App\Http\Controllers\UserController::class, [
             'except' => ['create', 'edit', 'show']
         ]);
@@ -73,6 +85,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/admin/sales/remove-from-cart', 'removeFromCart')->name('sales.remove-from-cart');
         Route::delete('/admin/sales/clear-cart', 'clearCart')->name('sales.clear-cart');
         Route::post('/admin/sales/checkout', 'checkout')->name('sales.checkout');
+        Route::post('/admin/sales/{saleDocument}/print-thermal', [PrintController::class, 'printReceipt'])->name('sales.print-thermal');
         Route::get('/admin/sales/{saleDocument}', 'show')->name('sales.show');
         Route::get('/admin/sales-history', 'history')->name('sales.history');
 
