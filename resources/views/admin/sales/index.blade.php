@@ -166,7 +166,7 @@
                     </div>
 
                     <div id="stage-payment" class="stage-panel d-none d-flex flex-column h-100">
-                        <div class="stage-body p-3 overflow-auto">
+                        <div class="stage-body payment-stage-body p-3">
                             <button type="button" class="btn btn-link btn-sm p-0 mb-3 text-decoration-none" onclick="backToCartStage()">← Kembali ke keranjang</button>
 
                             <div class="rounded p-2 mb-3" style="background: #F8FAFC; border: 1px solid #E2E8F0;">
@@ -186,8 +186,8 @@
                                     <label for="buyerSearchInput" class="form-label fw-bold mb-0">Pelanggan <span class="text-muted fw-normal">- opsional</span></label>
                                     <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="toggleNewBuyerForm()">+ Pelanggan baru</button>
                                 </div>
-                                <input type="text" id="buyerSearchInput" class="form-control form-control-sm" placeholder="Pelanggan umum">
-                                <small id="buyerSelectedHint" class="text-muted d-block mt-1">Bayar penuh boleh tanpa profil pelanggan.</small>
+                                <input type="text" id="buyerSearchInput" class="form-control form-control-sm" placeholder="Pelanggan umum (lewati atau cari)">
+                                <small id="buyerSelectedHint" class="text-muted d-block mt-1">Bayar penuh boleh tanpa profil — lewati = Pelanggan Umum.</small>
                                 <div id="buyerSearchResults" class="list-group d-none position-absolute w-100 shadow-sm" style="z-index: 20; max-height: 220px; overflow-y: auto;"></div>
 
                                 <div id="newBuyerForm" class="mt-2 p-2 rounded border d-none" style="background-color: #F8FAFC;">
@@ -237,13 +237,13 @@
                                     </div>
                                 </div>
 
-                                <div class="d-flex gap-1 mb-2" style="font-size: 0.7rem;">
+                                <div class="quick-cash-options d-flex flex-wrap gap-2" style="font-size: 0.7rem;">
                                     <button type="button" class="btn btn-sm btn-outline-secondary grow" onclick="setQuickCash('exact')">💵 Pas</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary grow" onclick="setQuickCash(50000)">💵 50rb</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary grow" onclick="setQuickCash(100000)">💵 100rb</button>
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="font-size: 0.8rem; background-color: #F8FAFC; border: 1px solid #E2E8F0;">
+                                <div class="payment-result-card change-result d-flex justify-content-between align-items-center rounded" style="font-size: 0.8rem; background-color: #F8FAFC; border: 1px solid #E2E8F0;">
                                     <span class="fw-bold" style="color: #1E293B;">Kembalian:</span>
                                     <span class="fw-bold" id="changeDisplay" style="color: #059669;">Rp 0</span>
                                 </div>
@@ -268,12 +268,12 @@
                                     </select>
                                 </div>
 
-                                <div class="mb-2">
+                                <div class="mb-3">
                                     <label for="debtNote" class="form-label mb-1" style="font-size: 0.75rem; font-weight: 600;">Catatan</label>
                                     <textarea id="debtNote" class="form-control form-control-sm" rows="2" placeholder="Catatan opsional"></textarea>
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center p-2 rounded" style="font-size: 0.8rem; background-color: #FFF7ED; border: 1px solid #FDBA74;">
+                                <div class="payment-result-card debt-result d-flex justify-content-between align-items-center rounded" style="font-size: 0.8rem; background-color: #FFF7ED; border: 1px solid #FDBA74;">
                                     <span class="fw-bold" style="color: #9A3412;">Sisa Hutang:</span>
                                     <span class="fw-bold" id="debtRemainingDisplay" style="color: #C2410C;">Rp 0</span>
                                 </div>
@@ -282,7 +282,7 @@
                             <div id="checkoutError" class="alert alert-danger py-2 px-3 mt-3 d-none" style="font-size: 0.8rem;"></div>
                         </div>
 
-                        <div class="stage-footer card-footer border-top p-2" style="background-color: #FFFFFF;">
+                        <div class="stage-footer card-footer border-top p-2" style="background-color: #FFFFFF; border-radius: 0 0 0.375rem 0.375rem;">
                             <button
                                 class="w-100 fw-bold shadow-sm"
                                 id="confirmCheckoutBtn"
@@ -332,14 +332,14 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        overflow: hidden;
+        overflow: visible;
     }
 
     /* Hanya row utama. Jangan gunakan .pos-wrapper .row karena akan
        membuat row pembayaran ikut memiliki height: 100%. */
     .pos-wrapper > .row {
         flex: 1 1 auto;
-        height: 100%;
+        height: auto;
         min-height: 0;
     }
 
@@ -394,21 +394,22 @@
 .pos-cart-panel {
     display: flex;
     flex-direction: column;
-    height: calc(100dvh - 260px);
-    min-height: 560px;
-    max-height: 750px;
+    height: calc(100dvh - 180px);
+    min-height: 0;
     overflow: hidden;
 }
 
     .pos-cart-panel .card-header {
         flex-shrink: 0;
         border: none !important;
+        position: sticky;
+        top: 0;
+        z-index: 7;
     }
 
 .pos-cart-body {
     flex: 1 1 auto;
-    min-height: 100px;
-    max-height: 400px;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     background-color: #FFFFFF;
@@ -441,6 +442,11 @@
 }
 
 
+.pos-cart-panel .card-body {
+    min-height: 0;
+    overflow: hidden;
+}
+
 .pos-cart-panel .card-footer {
     flex: 0 0 auto;
     background-color: #FFFFFF;
@@ -450,11 +456,50 @@
 .stage-panel {
     flex: 1 1 auto;
     min-height: 0;
+    overflow: hidden;
 }
 
 .stage-body {
     flex: 1 1 auto;
     min-height: 0;
+}
+
+/* Form pembayaran adalah satu-satunya area yang bergulir. Footer tetap
+   mengambil ruang normal sehingga tidak menutupi konten terakhir. */
+.payment-stage-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-bottom: 2rem !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+.quick-cash-options {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.quick-cash-options .btn {
+    flex: 1 1 5rem;
+    min-height: 2.25rem;
+}
+
+.payment-result-card {
+    min-height: 3rem;
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+    font-size: 0.75rem !important;
+}
+
+.payment-result-card > span:last-child {
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.debt-result {
+    margin-bottom: 0.5rem;
 }
 
 .stage-footer {
@@ -496,8 +541,29 @@
 
         .pos-cart-panel {
             height: auto;
-            min-height: 520px;
+            min-height: 0;
             max-height: none;
+        }
+
+        .stage-panel {
+            overflow: visible;
+        }
+
+        .payment-stage-body {
+            overflow: visible;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .payment-result-card {
+            align-items: flex-start !important;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .payment-result-card > span:last-child {
+            width: 100%;
+            text-align: left;
         }
     }
 </style>
@@ -604,6 +670,8 @@
             if (data.success) {
                 updateCartDisplay(data.cart);
                 focusSearch();
+            } else if (data.message) {
+                alert(data.message);
             }
         })
         .catch(err => console.error(err));
@@ -696,6 +764,7 @@
 
         const productId = input.dataset.productId;
         const isQuantity = input.classList.contains('quantity-input');
+        const prevValue = input.value;
         const data = { product_id: parseInt(productId) };
 
         if (isQuantity) {
@@ -716,6 +785,9 @@
         .then(data => {
             if (data.success) {
                 updateCartDisplay(data.cart);
+            } else if (data.message) {
+                input.value = prevValue;
+                alert(data.message);
             }
         });
     }
@@ -839,6 +911,27 @@
 
         const confirmBtn = document.getElementById('confirmCheckoutBtn');
         confirmBtn.textContent = type === 'debt' ? 'Simpan Transaksi Hutang' : 'Simpan Pembayaran';
+
+        // Reset scroll ke atas saat ganti mode
+        const paymentBody = document.querySelector('.payment-stage-body');
+        if (paymentBody) paymentBody.scrollTop = 0;
+
+        // Sesuaikan keterangan + placeholder pelanggan sesuai jenis pembayaran
+        const buyerInput = document.getElementById('buyerSearchInput');
+        const hint = document.getElementById('buyerSelectedHint');
+        const hasBuyer = document.getElementById('buyerId').value !== '';
+
+        if (type === 'debt') {
+            buyerInput.placeholder = 'Cari pelanggan terdaftar (wajib utk hutang)';
+            if (!hasBuyer && hint) {
+                hint.textContent = 'Hutang wajib memilih atau membuat pelanggan terdaftar.';
+            }
+        } else {
+            buyerInput.placeholder = 'Pelanggan umum (lewati atau cari)';
+            if (!hasBuyer && hint) {
+                hint.textContent = 'Bayar penuh boleh tanpa profil — lewati = Pelanggan Umum.';
+            }
+        }
     }
 
     function selectBuyer(buyer) {
@@ -848,9 +941,9 @@
         const hint = document.getElementById('buyerSelectedHint');
         if (buyer) {
             const phoneInfo = buyer.phone ? ' (' + buyer.phone + ')' : '';
-            hint.textContent = 'Dipilih: ' + buyer.name + phoneInfo;
+            if (hint) hint.textContent = 'Dipilih: ' + buyer.name + phoneInfo;
         } else {
-            hint.textContent = 'Bayar penuh boleh tanpa profil pelanggan.';
+            if (hint) hint.textContent = 'Bayar penuh boleh tanpa profil — lewati = Pelanggan Umum.';
         }
 
         hideBuyerSearchResults();

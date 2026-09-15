@@ -22,4 +22,9 @@ class SaleDocument extends Model
     {
         return $this->belongsTo(Buyer::class);
     }
+
+    public function debtPayments()
+    {
+        return $this->hasMany(DebtPayment::class);
+    }
 }

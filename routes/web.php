@@ -27,6 +27,7 @@ Route::middleware(['auth'])->group(function () {
     
     // Dashboard API Routes
     Route::prefix('api/dashboard')->controller(App\Http\Controllers\DashboardController::class)->group(function () {
+        Route::get('/summary', 'summary')->name('dashboard.api.summary');
         Route::get('/kpi/todays-sales', 'getKPITodaysSales')->name('dashboard.api.kpi.todays-sales');
         Route::get('/kpi/month-sales', 'getKPIMonthSales')->name('dashboard.api.kpi.month-sales');
         Route::get('/kpi/year-sales', 'getKPIYearSales')->name('dashboard.api.kpi.year-sales');
@@ -86,6 +87,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/admin/sales/clear-cart', 'clearCart')->name('sales.clear-cart');
         Route::post('/admin/sales/checkout', 'checkout')->name('sales.checkout');
         Route::post('/admin/sales/{saleDocument}/print-thermal', [PrintController::class, 'printReceipt'])->name('sales.print-thermal');
+        Route::post('/admin/sales/{saleDocument}/pay-debt', 'payDebt')->name('sales.pay-debt');
         Route::get('/admin/sales/{saleDocument}', 'show')->name('sales.show');
         Route::get('/admin/sales-history', 'history')->name('sales.history');
 

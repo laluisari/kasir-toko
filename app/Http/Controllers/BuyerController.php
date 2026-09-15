@@ -46,7 +46,7 @@ class BuyerController extends Controller
     {
         $buyer->load(['saleDocuments' => function ($q) {
             $q->where('is_debt', true)
-              ->with('sales.product')
+              ->with('sales.product', 'debtPayments.user')
               ->orderBy('created_at', 'desc');
         }]);
 
@@ -58,7 +58,7 @@ class BuyerController extends Controller
         foreach ($buyer->saleDocuments as $sale) {
             $totalDebt += $sale->total_price;
             $totalOutstanding += $sale->debt_remaining ?? 0;
-            $totalPaid += $sale->down_payment ?? 0;
+            $totalPaid += ($sale->down_payment ?? 0) + $sale->debtPayments->sum('amount');
         }
 
         return view('admin.buyers.show', compact('buyer', 'totalDebt', 'totalOutstanding', 'totalPaid'));

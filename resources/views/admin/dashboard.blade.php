@@ -232,39 +232,28 @@
         }
     }
 
-    // Load KPI Cards
-    function loadKPIs() {
-        fetch('{{ route("dashboard.api.kpi.todays-sales") }}')
+    // Load seluruh data dashboard via satu request
+    function loadDashboard() {
+        fetch('{{ route("dashboard.api.summary") }}')
             .then(r => r.json())
             .then(data => {
-                document.getElementById('kpi-todays-sales').textContent = data.formatted;
-                updateKPIChange('kpi-todays-sales-change', data.change_percent, data.is_increase, 'dari kemarin');
-            });
+                if (!data.success) return;
 
-        fetch('{{ route("dashboard.api.kpi.todays-transactions") }}')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('kpi-todays-transactions').textContent = data.value + ' transaksi';
-            });
+                const k = data.kpi;
+                document.getElementById('kpi-todays-sales').textContent = k.todays_sales.formatted;
+                updateKPIChange('kpi-todays-sales-change', k.todays_sales.change_percent, k.todays_sales.is_increase, 'dari kemarin');
+                document.getElementById('kpi-todays-transactions').textContent = k.todays_transactions + ' transaksi';
+                document.getElementById('kpi-month-sales').textContent = k.month_sales.formatted;
+                updateKPIChange('kpi-month-sales-change', k.month_sales.change_percent, k.month_sales.is_increase, 'vs bulan lalu');
+                document.getElementById('kpi-year-sales').textContent = k.year_sales.formatted;
+                updateKPIChange('kpi-year-sales-change', k.year_sales.change_percent, k.year_sales.is_increase, 'vs tahun lalu');
+                document.getElementById('kpi-todays-items').textContent = k.todays_items;
 
-        fetch('{{ route("dashboard.api.kpi.month-sales") }}')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('kpi-month-sales').textContent = data.formatted;
-                updateKPIChange('kpi-month-sales-change', data.change_percent, data.is_increase, 'vs bulan lalu');
-            });
-
-        fetch('{{ route("dashboard.api.kpi.year-sales") }}')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('kpi-year-sales').textContent = data.formatted;
-                updateKPIChange('kpi-year-sales-change', data.change_percent, data.is_increase, 'vs tahun lalu');
-            });
-
-        fetch('{{ route("dashboard.api.kpi.todays-items") }}')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('kpi-todays-items').textContent = data.value;
+                // Tampilkan tiap panel berurutan (stagger) biar tetap terasa "per element"
+                renderPaymentMethods(data.payment_methods, data.todays_sales);
+                setTimeout(() => renderTopProducts(data.top_products), 120);
+                setTimeout(() => renderLowStockProducts(data.low_stock), 240);
+                setTimeout(() => renderCategoryStats(data.category_stats), 360);
             });
     }
 
@@ -412,17 +401,6 @@
         salesChart.render();
     }
 
-    // Load Payment Methods
-    function loadPaymentMethods() {
-        fetch('{{ route("dashboard.api.payment-methods") }}')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    renderPaymentMethods(data.data, data.todaysSales);
-                }
-            });
-    }
-
     function renderPaymentMethods(methods, total) {
         let html = '';
         if (methods.length === 0) {
@@ -466,17 +444,6 @@
         document.getElementById('payment-methods-container').innerHTML = html;
     }
 
-    // Load Top Products
-    function loadTopProducts() {
-        fetch('{{ route("dashboard.api.top-products") }}')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    renderTopProducts(data.data);
-                }
-            });
-    }
-
     function renderTopProducts(products) {
         let html = '';
         if (products.length === 0) {
@@ -517,17 +484,6 @@
 
 
 
-    // Load Low Stock Products
-    function loadLowStockProducts() {
-        fetch('{{ route("dashboard.api.low-stock") }}')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    renderLowStockProducts(data.data);
-                }
-            });
-    }
-
     function renderLowStockProducts(products) {
         let html = '';
         if (products.length === 0) {
@@ -562,17 +518,6 @@
             });
         }
         document.getElementById('low-stock-container').innerHTML = html;
-    }
-
-    // Load Category Stats
-    function loadCategoryStats() {
-        fetch('{{ route("dashboard.api.category-stats") }}')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    renderCategoryStats(data.data);
-                }
-            });
     }
 
     function renderCategoryStats(categories) {
@@ -614,12 +559,8 @@
 
     // Initialize Dashboard
     function initDashboard() {
-        loadKPIs();
+        loadDashboard();
         loadSalesChart();
-        loadPaymentMethods();
-        loadTopProducts();
-        loadLowStockProducts();
-        loadCategoryStats();
     }
 
     // Load on page ready

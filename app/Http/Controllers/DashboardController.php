@@ -5,154 +5,153 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Models\Product;
 use App\Models\SaleDocument;
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    const CACHE_TTL = 120;
+    const TOP_PRODUCTS_CACHE_TTL = 3600;
+
     public function index()
     {
         return view('admin.dashboard');
     }
 
+    // Ringkasan dashboard dalam satu request (konsolidasi semua panel)
+    public function summary()
+    {
+        $summary = Cache::remember('dashboard.summary', self::CACHE_TTL, function () {
+            $todayStart = Carbon::today();
+            $tomorrowStart = $todayStart->copy()->addDay();
+            $yesterdayStart = $todayStart->copy()->subDay();
+
+            $monthStart = Carbon::now()->startOfMonth();
+            $lastMonthStart = Carbon::now()->subMonth()->startOfMonth();
+            $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
+
+            $yearStart = Carbon::now()->startOfYear();
+            $lastYearStart = Carbon::now()->subYear()->startOfYear();
+            $lastYearEnd = Carbon::now()->subYear()->endOfYear();
+
+            $todaySales = $this->completedSalesInRange($todayStart, $tomorrowStart);
+            $yesterdaySales = $this->completedSalesInRange($yesterdayStart, $todayStart);
+            $monthSales = $this->completedSalesInRange($monthStart, Carbon::now());
+            $lastMonthSales = $this->completedSalesInRange($lastMonthStart, $lastMonthEnd);
+            $yearSales = $this->completedSalesInRange($yearStart, Carbon::now());
+            $lastYearSales = $this->completedSalesInRange($lastYearStart, $lastYearEnd);
+
+            $todayTransactions = (int) SaleDocument::where('status', 'completed')
+                ->whereBetween('created_at', [$todayStart, $tomorrowStart])
+                ->count();
+
+            $todayItems = (int) Sale::whereBetween('created_at', [$todayStart, $tomorrowStart])
+                ->sum('quantity');
+
+            $paymentMethods = SaleDocument::selectRaw('payment_method, COUNT(*) as count, SUM(total_price) as total')
+                ->where('status', 'completed')
+                ->whereBetween('created_at', [$todayStart, $tomorrowStart])
+                ->groupBy('payment_method')
+                ->get();
+
+            return [
+                'kpi' => [
+                    'todays_sales' => $this->kpiPayload($todaySales, $yesterdaySales),
+                    'month_sales' => $this->kpiPayload($monthSales, $lastMonthSales),
+                    'year_sales' => $this->kpiPayload($yearSales, $lastYearSales),
+                    'todays_transactions' => $todayTransactions,
+                    'todays_items' => $todayItems,
+                ],
+                'chart' => $this->chartPayload('1month'),
+                'payment_methods' => $paymentMethods,
+                'todays_sales' => $todaySales,
+                'top_products' => $this->topProducts(),
+                'low_stock' => $this->lowStockProducts(),
+                'category_stats' => $this->categoryStats(),
+            ];
+        });
+
+        return response()->json(array_merge(['success' => true], $summary));
+    }
+
     // KPI: Total Penjualan Hari Ini dengan Perubahan
     public function getKPITodaysSales()
     {
-        $today = Carbon::today();
-        $yesterday = Carbon::today()->subDay();
-        
-        $todaysSales = SaleDocument::whereDate('created_at', $today)
-            ->where('status', 'completed')
-            ->sum('total_price');
-        
-        $yesterdaysSales = SaleDocument::whereDate('created_at', $yesterday)
-            ->where('status', 'completed')
-            ->sum('total_price');
-        
-        $changePercent = $yesterdaysSales > 0 
-            ? round((($todaysSales - $yesterdaysSales) / $yesterdaysSales) * 100, 1)
-            : 0;
+        $todayStart = Carbon::today();
+        $tomorrowStart = $todayStart->copy()->addDay();
+        $yesterdayStart = $todayStart->copy()->subDay();
 
-        return response()->json([
-            'success' => true,
-            'value' => $todaysSales,
-            'formatted' => 'Rp ' . number_format($todaysSales, 0, ',', '.'),
-            'change_percent' => $changePercent,
-            'is_increase' => $changePercent >= 0,
-        ]);
+        $current = $this->completedSalesInRange($todayStart, $tomorrowStart);
+        $previous = $this->completedSalesInRange($yesterdayStart, $todayStart);
+
+        return response()->json(array_merge(['success' => true], $this->kpiPayload($current, $previous)));
     }
 
     // KPI: Total Penjualan Bulan Ini dengan Perubahan
     public function getKPIMonthSales()
     {
-        $thisMonth = Carbon::now()->startOfMonth();
-        $lastMonth = Carbon::now()->subMonth()->startOfMonth();
-        $lastMonthEnd = Carbon::now()->subMonth()->endOfMonth();
-        
-        $monthSales = SaleDocument::whereBetween('created_at', [$thisMonth, Carbon::now()])
-            ->where('status', 'completed')
-            ->sum('total_price');
-        
-        $lastMonthSales = SaleDocument::whereBetween('created_at', [$lastMonth, $lastMonthEnd])
-            ->where('status', 'completed')
-            ->sum('total_price');
-        
-        $changePercent = $lastMonthSales > 0 
-            ? round((($monthSales - $lastMonthSales) / $lastMonthSales) * 100, 1)
-            : 0;
+        $current = $this->completedSalesInRange(Carbon::now()->startOfMonth(), Carbon::now());
+        $previous = $this->completedSalesInRange(Carbon::now()->subMonth()->startOfMonth(), Carbon::now()->subMonth()->endOfMonth());
 
-        return response()->json([
-            'success' => true,
-            'value' => $monthSales,
-            'formatted' => 'Rp ' . number_format($monthSales, 0, ',', '.'),
-            'change_percent' => $changePercent,
-            'is_increase' => $changePercent >= 0,
-        ]);
+        return response()->json(array_merge(['success' => true], $this->kpiPayload($current, $previous)));
     }
 
     // KPI: Total Penjualan Tahun Ini dengan Perubahan
     public function getKPIYearSales()
     {
-        $thisYear = Carbon::now()->startOfYear();
-        $lastYear = Carbon::now()->subYear()->startOfYear();
-        $lastYearEnd = Carbon::now()->subYear()->endOfYear();
-        
-        $yearSales = SaleDocument::whereBetween('created_at', [$thisYear, Carbon::now()])
-            ->where('status', 'completed')
-            ->sum('total_price');
-        
-        $lastYearSales = SaleDocument::whereBetween('created_at', [$lastYear, $lastYearEnd])
-            ->where('status', 'completed')
-            ->sum('total_price');
-        
-        $changePercent = $lastYearSales > 0 
-            ? round((($yearSales - $lastYearSales) / $lastYearSales) * 100, 1)
-            : 0;
+        $current = $this->completedSalesInRange(Carbon::now()->startOfYear(), Carbon::now());
+        $previous = $this->completedSalesInRange(Carbon::now()->subYear()->startOfYear(), Carbon::now()->subYear()->endOfYear());
 
-        return response()->json([
-            'success' => true,
-            'value' => $yearSales,
-            'formatted' => 'Rp ' . number_format($yearSales, 0, ',', '.'),
-            'change_percent' => $changePercent,
-            'is_increase' => $changePercent >= 0,
-        ]);
+        return response()->json(array_merge(['success' => true], $this->kpiPayload($current, $previous)));
     }
 
     // KPI: Total Transaksi Hari Ini
     public function getKPITodaysTransactions()
     {
-        $today = Carbon::today();
-        $todaysTransactions = SaleDocument::whereDate('created_at', $today)
-            ->where('status', 'completed')
+        $todayStart = Carbon::today();
+        $tomorrowStart = $todayStart->copy()->addDay();
+
+        $count = (int) SaleDocument::where('status', 'completed')
+            ->whereBetween('created_at', [$todayStart, $tomorrowStart])
             ->count();
 
         return response()->json([
             'success' => true,
-            'value' => $todaysTransactions,
+            'value' => $count,
         ]);
     }
 
     // KPI: Total Item Terjual Hari Ini
     public function getKPITodaysItems()
     {
-        $today = Carbon::today();
-        $todaysItems = Sale::whereDate('created_at', $today)
+        $todayStart = Carbon::today();
+        $tomorrowStart = $todayStart->copy()->addDay();
+
+        $items = (int) Sale::whereBetween('created_at', [$todayStart, $tomorrowStart])
             ->sum('quantity');
 
         return response()->json([
             'success' => true,
-            'value' => $todaysItems ?? 0,
+            'value' => $items,
         ]);
     }
 
-    // Data: Produk Terlaris (Top 5)
+    // Data: Produk Terlaris (All Time Top 5) — di-cache karena aggregat seluruh riwayat
     public function getTopProducts()
     {
-        $topProducts = Sale::selectRaw('product_id, SUM(quantity) as total_qty, product_name')
-            ->groupBy('product_id', 'product_name')
-            ->orderByDesc('total_qty')
-            ->limit(5)
-            ->get();
-
         return response()->json([
             'success' => true,
-            'data' => $topProducts,
+            'data' => $this->topProducts(),
         ]);
     }
 
     // Data: Produk Stok Terbatas (< 5)
     public function getLowStockProducts()
     {
-        $lowStockProducts = Product::with('category')
-            ->where('stock', '<', 5)
-            ->orderBy('stock', 'asc')
-            ->limit(10)
-            ->get();
-
         return response()->json([
             'success' => true,
-            'data' => $lowStockProducts,
+            'data' => $this->lowStockProducts(),
         ]);
     }
 
@@ -160,156 +159,169 @@ class DashboardController extends Controller
     public function getSalesChartByRange(Request $request)
     {
         $range = $request->get('range', '1month');
-        $chartData = [];
-
-        switch ($range) {
-            case 'week':
-                // Last Week - Daily breakdown (today + last 7 days)
-                $startDate = Carbon::now()->subDays(7);
-                $endDate = Carbon::now()->endOfDay();
-                
-                $salesData = SaleDocument::selectRaw('DATE(created_at) as date, SUM(total_price) as total')
-                    ->where('status', 'completed')
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->groupBy('date')
-                    ->orderBy('date', 'asc')
-                    ->get();
-
-                // Ensure all 8 days are present (fill missing days with 0)
-                $allDates = collect();
-                for ($i = 7; $i >= 0; $i--) {
-                    $date = Carbon::now()->subDays($i)->format('Y-m-d');
-                    $allDates->push($date);
-                }
-
-                $dateMap = $salesData->keyBy('date')->toArray();
-                $salesArray = $allDates->map(function($date) use ($dateMap) {
-                    return $dateMap[$date]['total'] ?? 0;
-                })->toArray();
-
-                $chartData = [
-                    'dates' => $allDates->map(fn($d) => Carbon::parse($d)->format('d M'))->toArray(),
-                    'sales' => $salesArray,
-                    'range' => 'Minggu Terakhir',
-                ];
-                break;
-
-            case '1month':
-                // This Month - Daily breakdown
-                $startDate = Carbon::now()->startOfMonth();
-                $endDate = Carbon::now()->endOfMonth();
-                
-                $salesData = SaleDocument::selectRaw('DATE(created_at) as date, SUM(total_price) as total')
-                    ->where('status', 'completed')
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->groupBy('date')
-                    ->orderBy('date', 'asc')
-                    ->get();
-
-                $chartData = [
-                    'dates' => $salesData->pluck('date')->map(fn($d) => Carbon::parse($d)->format('d'))->toArray(),
-                    'sales' => $salesData->pluck('total')->toArray(),
-                    'range' => 'Bulan Ini',
-                ];
-                break;
-
-            case '3months':
-                // Last 3 Months - Monthly breakdown
-                $startDate = Carbon::now()->subMonths(2)->startOfMonth();
-                $endDate = Carbon::now()->endOfMonth();
-                
-                $salesData = SaleDocument::selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, SUM(total_price) as total')
-                    ->where('status', 'completed')
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->groupBy('month')
-                    ->orderBy('month', 'asc')
-                    ->get();
-
-                $chartData = [
-                    'dates' => $salesData->map(fn($item) => Carbon::parse($item->month)->format('M y'))->toArray(),
-                    'sales' => $salesData->pluck('total')->toArray(),
-                    'range' => '3 Bulan Terakhir',
-                ];
-                break;
-
-            case '6months':
-                // Last 6 Months - Monthly breakdown
-                $startDate = Carbon::now()->subMonths(5)->startOfMonth();
-                $endDate = Carbon::now()->endOfMonth();
-                
-                $salesData = SaleDocument::selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, SUM(total_price) as total')
-                    ->where('status', 'completed')
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->groupBy('month')
-                    ->orderBy('month', 'asc')
-                    ->get();
-
-                $chartData = [
-                    'dates' => $salesData->map(fn($item) => Carbon::parse($item->month)->format('M y'))->toArray(),
-                    'sales' => $salesData->pluck('total')->toArray(),
-                    'range' => '6 Bulan Terakhir',
-                ];
-                break;
-
-            default:
-                // Default: This Month
-                $startDate = Carbon::now()->startOfMonth();
-                $endDate = Carbon::now()->endOfMonth();
-                
-                $salesData = SaleDocument::selectRaw('DATE(created_at) as date, SUM(total_price) as total')
-                    ->where('status', 'completed')
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->groupBy('date')
-                    ->orderBy('date', 'asc')
-                    ->get();
-
-                $chartData = [
-                    'dates' => $salesData->pluck('date')->map(fn($d) => Carbon::parse($d)->format('d'))->toArray(),
-                    'sales' => $salesData->pluck('total')->toArray(),
-                    'range' => 'Bulan Ini',
-                ];
-        }
 
         return response()->json([
             'success' => true,
-            'data' => $chartData,
+            'data' => $this->chartPayload($range),
         ]);
     }
 
     // Data: Payment Methods Today
     public function getPaymentMethods()
     {
-        $today = Carbon::today();
+        $todayStart = Carbon::today();
+        $tomorrowStart = $todayStart->copy()->addDay();
+
         $paymentMethods = SaleDocument::selectRaw('payment_method, COUNT(*) as count, SUM(total_price) as total')
-            ->whereDate('created_at', $today)
             ->where('status', 'completed')
+            ->whereBetween('created_at', [$todayStart, $tomorrowStart])
             ->groupBy('payment_method')
             ->get();
 
         return response()->json([
             'success' => true,
             'data' => $paymentMethods,
-            'todaysSales' => SaleDocument::whereDate('created_at', $today)
-                ->where('status', 'completed')
-                ->sum('total_price'),
+            'todaysSales' => $paymentMethods->sum('total'),
         ]);
     }
 
     // Data: Penjualan per Kategori Hari Ini
     public function getCategoryStats()
     {
-        $today = Carbon::today();
-        $categoryStats = Sale::selectRaw('products.category_id, categories.name, COUNT(*) as count, SUM(quantity) as total_qty')
+        return response()->json([
+            'success' => true,
+            'data' => $this->categoryStats(),
+        ]);
+    }
+
+    private function completedSalesInRange(Carbon $from, Carbon $to): int
+    {
+        return (int) SaleDocument::where('status', 'completed')
+            ->whereBetween('created_at', [$from, $to])
+            ->sum('total_price');
+    }
+
+    private function changePercent(int $current, int $previous): float
+    {
+        return $previous > 0 ? round((($current - $previous) / $previous) * 100, 1) : 0;
+    }
+
+    private function kpiPayload(int $current, int $previous): array
+    {
+        $change = $this->changePercent($current, $previous);
+
+        return [
+            'value' => $current,
+            'formatted' => 'Rp ' . number_format($current, 0, ',', '.'),
+            'change_percent' => $change,
+            'is_increase' => $change >= 0,
+        ];
+    }
+
+    private function topProducts()
+    {
+        return Cache::remember('dashboard.top_products', self::TOP_PRODUCTS_CACHE_TTL, function () {
+            return Sale::selectRaw('product_id, SUM(quantity) as total_qty, product_name')
+                ->groupBy('product_id', 'product_name')
+                ->orderByDesc('total_qty')
+                ->limit(5)
+                ->get();
+        });
+    }
+
+    private function lowStockProducts()
+    {
+        return Product::with('category')
+            ->where('stock', '<', 5)
+            ->orderBy('stock', 'asc')
+            ->limit(10)
+            ->get();
+    }
+
+    private function categoryStats()
+    {
+        $todayStart = Carbon::today();
+        $tomorrowStart = $todayStart->copy()->addDay();
+
+        return Sale::selectRaw('products.category_id, categories.name, COUNT(*) as count, SUM(quantity) as total_qty')
             ->join('products', 'sales.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
-            ->whereDate('sales.created_at', $today)
+            ->whereBetween('sales.created_at', [$todayStart, $tomorrowStart])
             ->groupBy('products.category_id', 'categories.name')
             ->orderByDesc('total_qty')
             ->get();
+    }
 
-        return response()->json([
-            'success' => true,
-            'data' => $categoryStats,
-        ]);
+    private function chartPayload(string $range): array
+    {
+        if ($range === 'week') {
+            // Last 7 Days - Daily breakdown
+            $startDate = Carbon::now()->subDays(7);
+            $endDate = Carbon::now()->endOfDay();
+
+            $salesData = SaleDocument::selectRaw('DATE(created_at) as date, SUM(total_price) as total')
+                ->where('status', 'completed')
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->groupBy('date')
+                ->orderBy('date', 'asc')
+                ->get();
+
+            $allDates = collect();
+            for ($i = 7; $i >= 0; $i--) {
+                $allDates->push(Carbon::now()->subDays($i)->format('Y-m-d'));
+            }
+
+            $dateMap = $salesData->keyBy('date')->toArray();
+            $salesArray = $allDates->map(function ($date) use ($dateMap) {
+                return $dateMap[$date]['total'] ?? 0;
+            })->toArray();
+
+            return [
+                'dates' => $allDates->map(fn ($d) => Carbon::parse($d)->format('d M'))->toArray(),
+                'sales' => $salesArray,
+                'range' => 'Minggu Terakhir',
+            ];
+        }
+
+        if ($range === '3months' || $range === '6months') {
+            $monthsBack = $range === '3months' ? 2 : 5;
+            $label = $range === '3months' ? '3 Bulan Terakhir' : '6 Bulan Terakhir';
+        } else {
+            $monthsBack = null;
+            $label = 'Bulan Ini';
+        }
+
+        $startDate = $monthsBack !== null
+            ? Carbon::now()->subMonths($monthsBack)->startOfMonth()
+            : Carbon::now()->startOfMonth();
+        $endDate = Carbon::now()->endOfMonth();
+
+        if ($monthsBack !== null) {
+            $salesData = SaleDocument::selectRaw('DATE_FORMAT(created_at, "%Y-%m") as month, SUM(total_price) as total')
+                ->where('status', 'completed')
+                ->whereBetween('created_at', [$startDate, $endDate])
+                ->groupBy('month')
+                ->orderBy('month', 'asc')
+                ->get();
+
+            return [
+                'dates' => $salesData->map(fn ($item) => Carbon::parse($item->month)->format('M y'))->toArray(),
+                'sales' => $salesData->pluck('total')->toArray(),
+                'range' => $label,
+            ];
+        }
+
+        $salesData = SaleDocument::selectRaw('DATE(created_at) as date, SUM(total_price) as total')
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        return [
+            'dates' => $salesData->pluck('date')->map(fn ($d) => Carbon::parse($d)->format('d'))->toArray(),
+            'sales' => $salesData->pluck('total')->toArray(),
+            'range' => $label,
+        ];
     }
 }

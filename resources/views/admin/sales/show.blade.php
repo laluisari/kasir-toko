@@ -128,6 +128,20 @@
                             Catatan: {{ $saleDocument->debt_note }}
                         </div>
                         @endif
+                        @if($saleDocument->debtPayments->count() > 0)
+                        <div class="receipt-divider"></div>
+                        <div class="fw-bold mb-1">Riwayat Pembayaran</div>
+                        @foreach($saleDocument->debtPayments->sortBy('paid_at') as $payment)
+                        <div class="d-flex justify-content-between">
+                            <span>{{ $payment->paid_at->format('d/m H:i') }}</span>
+                            <span>Rp {{ number_format($payment->amount, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted" style="font-size: 10px;">
+                            <span>{{ strtoupper($payment->payment_method) }} · {{ $payment->user->name ?? 'Admin' }}</span>
+                            <span></span>
+                        </div>
+                        @endforeach
+                        @endif
                         @else
                         <div class="d-flex justify-content-between mb-1 pt-1">
                             <span>Uang Diterima:</span>

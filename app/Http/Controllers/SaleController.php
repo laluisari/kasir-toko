@@ -5,10 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use App\Models\Product;
 use App\Models\SaleDocument;
+use App\Models\DebtPayment;
 use App\Models\StockOpname;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
@@ -45,9 +49,21 @@ class SaleController extends Controller
         $product = Product::findOrFail($request->product_id);
         $cart = session()->get('sale_cart', []);
 
+        // Cek stok maksimal sebelum ditambah ke keranjang
+        $newQty = isset($cart[$product->id])
+            ? $cart[$product->id]['quantity'] + $request->quantity
+            : $request->quantity;
+
+        if ($product->stock < $newQty) {
+            return response()->json([
+                'success' => false,
+                'message' => "Stok {$product->name} tidak cukup (tersisa {$product->stock}).",
+            ], 422);
+        }
+
         // Jika produk sudah di cart, increment quantity
         if (isset($cart[$product->id])) {
-            $cart[$product->id]['quantity'] += $request->quantity;
+            $cart[$product->id]['quantity'] = $newQty;
         } else {
             // Ambil discount otomatis dari produk
             $auto_discount = $product->discount;
@@ -90,13 +106,31 @@ class SaleController extends Controller
 
         if (isset($cart[$productId])) {
             if ($request->has('quantity')) {
-                $cart[$productId]['quantity'] = $request->quantity;
+                $newQty = (int) $request->quantity;
+                $product = Product::find($productId);
+
+                if ($product && $newQty > $product->stock) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Stok {$product->name} tidak cukup (tersisa {$product->stock}).",
+                    ], 422);
+                }
+
+                $cart[$productId]['quantity'] = $newQty;
             }
             if ($request->has('discount')) {
                 // Diskon yang diinput kasir (manual)
-                $manual_discount = $request->discount;
+                $manual_discount = (int) $request->discount;
                 $auto_discount = $cart[$productId]['auto_discount'] ?? 0;
-                
+                $selling = $cart[$productId]['selling_price'] ?? 0;
+
+                if ($manual_discount > 0 && $selling <= ($auto_discount + $manual_discount)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Diskon tidak boleh lebih besar atau sama dengan harga jual.',
+                    ], 422);
+                }
+
                 $cart[$productId]['manual_discount'] = $manual_discount;
                 $cart[$productId]['discount'] = $auto_discount + $manual_discount; // Total
             }
@@ -183,6 +217,26 @@ class SaleController extends Controller
         }
 
         $total_price = $subtotal;
+
+        // Validasi diskon item: tidak boleh meniadakan harga atau membuat harga negatif
+        foreach ($cart as $item) {
+            $netDiscount = ($item['auto_discount'] ?? 0) + ($item['manual_discount'] ?? 0);
+            $selling = $item['selling_price'] ?? 0;
+
+            if ($netDiscount > 0 && $selling <= $netDiscount) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Diskon {$item['name']} tidak boleh lebih besar atau sama dengan harga jual (Rp {$selling}).",
+                ], 422);
+            }
+        }
+
+        if ($total_price <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Total belanja tidak valid.',
+            ], 422);
+        }
 
         $paymentType = $request->input('payment_type', 'full');
         $isDebt = $paymentType === 'debt';
@@ -273,48 +327,85 @@ class SaleController extends Controller
             $debtRemaining = $total_price - $downPayment;
         }
 
-        // Buat SaleDocument (nota)
-        $saleDocument = SaleDocument::create([
-            'user_id' => Auth::id(),
-            'invoice_number' => 'INV-' . now()->format('YmdHis') . '-' . Str::random(4),
-            'subtotal' => $subtotal,
-            'discount_total' => $discount_total,
-            'total_price' => $total_price,
-            'paid_amount' => $paidAmount,
-            'change_amount' => $changeAmount,
-            'payment_method' => $paymentMethod,
-            'payment_type' => $paymentType,
-            'is_debt' => $isDebt,
-            'status' => $status,
-            'buyer_id' => $buyerId,
-            'due_date' => $dueDate,
-            'down_payment' => $downPayment,
-            'debt_remaining' => $debtRemaining,
-            'debt_note' => $debtNote,
-        ]);
+        // Buat nota + item + kurangi stok dalam satu transaksi DB (cegah stok minus & data yatim)
+        $stockError = null;
 
-        // Buat Sale items & kurangi stock
-        foreach ($cart as $item) {
-            Sale::create([
-                'sale_document_id' => $saleDocument->id,
-                'product_id' => $item['product_id'],
-                'product_name' => $item['name'],
-                'cost_price' => $item['cost_price'],
-                'selling_price' => $item['selling_price'],
-                'discount' => $item['discount'],
-                'quantity' => $item['quantity'],
-                'subtotal' => ($item['selling_price'] - $item['discount']) * $item['quantity'],
+        $saleDocument = DB::transaction(function () use (
+            $cart, $subtotal, $discount_total, $total_price,
+            $paidAmount, $changeAmount, $paymentMethod, $paymentType, $isDebt, $status,
+            $buyerId, $dueDate, $downPayment, $debtRemaining, $debtNote, &$stockError
+        ) {
+            $ids = array_keys($cart);
+            $lockedProducts = Product::whereIn('id', $ids)
+                ->when(config('database.default') !== 'sqlite', fn ($q) => $q->lockForUpdate())
+                ->get()
+                ->keyBy('id');
+
+            // Validasi stok dengan kunci baris (cegah oversell saat transaksi bersamaan)
+            foreach ($cart as $productId => $item) {
+                $product = $lockedProducts->get($productId);
+
+                if (!$product) {
+                    $stockError = 'Ada produk yang tidak tersedia lagi. Bersihkan keranjang lalu ulangi.';
+                    return null;
+                }
+                if ($product->stock < $item['quantity']) {
+                    $stockError = "Stok {$product->name} tidak cukup (tersisa {$product->stock}).";
+                    return null;
+                }
+            }
+
+            $saleDocument = SaleDocument::create([
+                'user_id' => Auth::id(),
+                'invoice_number' => 'INV-' . now()->format('YmdHis') . '-' . Str::random(4),
+                'subtotal' => $subtotal,
+                'discount_total' => $discount_total,
+                'total_price' => $total_price,
+                'paid_amount' => $paidAmount,
+                'change_amount' => $changeAmount,
+                'payment_method' => $paymentMethod,
+                'payment_type' => $paymentType,
+                'is_debt' => $isDebt,
+                'status' => $status,
+                'buyer_id' => $buyerId,
+                'due_date' => $dueDate,
+                'down_payment' => $downPayment,
+                'debt_remaining' => $debtRemaining,
+                'debt_note' => $debtNote,
             ]);
 
-            // Kurangi stock produk
-            $product = Product::find($item['product_id']);
-            if ($product) {
-                $product->decrement('stock', $item['quantity']);
+            // Buat Sale items & kurangi stock (hanya setelah semua validasi lolos)
+            foreach ($cart as $item) {
+                Sale::create([
+                    'sale_document_id' => $saleDocument->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['name'],
+                    'cost_price' => $item['cost_price'],
+                    'selling_price' => $item['selling_price'],
+                    'discount' => $item['discount'],
+                    'quantity' => $item['quantity'],
+                    'subtotal' => ($item['selling_price'] - $item['discount']) * $item['quantity'],
+                ]);
+
+                $lockedProducts->get($item['product_id'])->decrement('stock', $item['quantity']);
             }
+
+            return $saleDocument;
+        });
+
+        if ($stockError !== null) {
+            return response()->json([
+                'success' => false,
+                'message' => $stockError,
+            ], 422);
         }
 
-        // Clear cart session
+        // Clear cart session hanya setelah transaksi berhasil
         session()->forget('sale_cart');
+
+        // Dashboard statistik harus langsung up-to-date setelah ada transaksi
+        Cache::forget('dashboard.summary');
+        Cache::forget('dashboard.top_products');
 
         return response()->json([
             'success' => true,
@@ -332,9 +423,66 @@ class SaleController extends Controller
     // Lihat detail nota (untuk print)
     public function show(SaleDocument $saleDocument)
     {
-        $saleDocument->load('user', 'sales.product', 'buyer');
+        $saleDocument->load('user', 'sales.product', 'buyer', 'debtPayments.user');
 
         return view('admin.sales.show', compact('saleDocument'));
+    }
+
+    // Terima pembayaran (cicilan/pelunasan) hutang
+    public function payDebt(Request $request, SaleDocument $saleDocument)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|integer|min:1',
+            'payment_method' => 'required|string|in:cash,qris,transfer',
+            'note' => 'nullable|string|max:2000',
+        ]);
+
+        $debtPaid = false;
+        $remaining = 0;
+
+        DB::transaction(function () use (&$debtPaid, &$remaining, $saleDocument, $validated) {
+            $doc = SaleDocument::whereKey($saleDocument->id)
+                ->when(config('database.default') !== 'sqlite', fn ($q) => $q->lockForUpdate())
+                ->first();
+
+            if (!$doc || !$doc->is_debt) {
+                throw ValidationException::withMessages(['amount' => 'Transaksi ini bukan transaksi hutang.']);
+            }
+            if ($doc->status !== 'pending' || $doc->debt_remaining <= 0) {
+                throw ValidationException::withMessages(['amount' => 'Hutang pada nota ini sudah lunas.']);
+            }
+            if ($validated['amount'] > $doc->debt_remaining) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Jumlah pembayaran melebihi sisa hutang (Rp ' . number_format($doc->debt_remaining, 0, ',', '.') . ').',
+                ]);
+            }
+
+            DebtPayment::create([
+                'sale_document_id' => $doc->id,
+                'user_id' => Auth::id(),
+                'amount' => $validated['amount'],
+                'payment_method' => $validated['payment_method'],
+                'note' => $validated['note'] ?? null,
+                'paid_at' => now(),
+            ]);
+
+            $doc->debt_remaining -= $validated['amount'];
+            if ($doc->debt_remaining === 0) {
+                $doc->status = 'completed';
+                $debtPaid = true;
+            }
+            $doc->save();
+            $remaining = $doc->debt_remaining;
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $debtPaid
+                ? 'Hutang lunas. Transaksi ditandai selesai.'
+                : 'Pembayaran hutang berhasil dicatat.',
+            'debt_remaining' => $remaining,
+            'paid' => $debtPaid,
+        ]);
     }
 
     // History penjualan kasir

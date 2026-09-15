@@ -140,7 +140,7 @@
     <!-- Transactions Table -->
     <div class="card border-0 shadow-sm rounded-4 mt-10">
         <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-bold text-dark">Daftar Transaksi</h6>
+            <h6 class="mb-0 fw-semibold text-dark" style="font-size: 0.95rem;">Daftar Transaksi</h6>
             <span class="badge bg-light text-secondary rounded-pill border px-3 py-1">{{ $totalTransactions }} Transaksi</span>
         </div>
         <div class="table-responsive">
@@ -148,12 +148,12 @@
                 <thead class="table-light text-muted small" style="background-color: #f8f9fa;">
                     <tr>
                         <th class="fw-semibold px-4 py-4 border-bottom-0">NO. INVOICE</th>
-                        <th class="text-center fw-semibold border-bottom-0 px-3 py-4">TANGGAL & WAKTU</th>
-                        <th class="text-center fw-semibold border-bottom-0 px-3 py-4">KASIR</th>
-                        <th class="text-center fw-semibold border-bottom-0 px-3 py-4">ITEM</th>
-                        <th class="text-center fw-semibold border-bottom-0 px-3 py-4">TOTAL (NET)</th>
-                        <th class="text-center fw-semibold border-bottom-0 px-3 py-4">METODE</th>
-                        <th class="text-center fw-semibold border-bottom-0 px-3 py-4">STATUS</th>
+                        <th class="text-center fw-semibold border-bottom-0 px-4 py-4">TANGGAL & WAKTU</th>
+                        <th class="text-center fw-semibold border-bottom-0 px-4 py-4">KASIR</th>
+                        <th class="text-center fw-semibold border-bottom-0 px-4 py-4">ITEM</th>
+                        <th class="text-center fw-semibold border-bottom-0 px-4 py-4">TOTAL (NET)</th>
+                        <th class="text-center fw-semibold border-bottom-0 px-4 py-4">METODE</th>
+                        <th class="text-center fw-semibold border-bottom-0 px-4 py-4">STATUS</th>
                         <th class="text-center px-4 fw-semibold border-bottom-0 py-4">AKSI</th>
                     </tr>
                 </thead>
@@ -179,18 +179,18 @@
                                 <iconify-icon icon="solar:copy-linear" class="ms-1 text-muted" style="font-size: 0.8rem;"></iconify-icon>
                             </span>
                         </td>
-                        <td class="text-center text-muted small px-3 py-4">
+                        <td class="text-center text-muted small px-4 py-4">
                             {{ $sale->created_at->format('d/m/Y H:i') }}
                         </td>
-                        <td class="text-center px-3 py-4">
+                        <td class="text-center px-4 py-4">
                             <span class="badge bg-light text-dark border font-normal rounded-pill px-2 py-1" style="font-weight: 500;">
                                 {{ $sale->user->name ?? 'Admin Kasir' }}
                             </span>
                         </td>
-                        <td class="text-center small text-muted fw-medium px-3 py-4">
+                        <td class="text-center small text-muted fw-medium px-4 py-4">
                             <span class="badge bg-light text-secondary rounded-2">{{ $sale->sales->sum('quantity') }} item</span>
                         </td>
-                        <td class="text-center px-3 py-4">
+                        <td class="text-center px-4 py-4">
                             <div class="d-flex flex-column align-items-center">
                                 <strong class="text-primary" style="font-size: 0.9rem;">
                                     Rp {{ number_format($sale->total_price, 0, ',', '.') }}
@@ -202,7 +202,7 @@
                                 @endif
                             </div>
                         </td>
-                        <td class="text-center px-3 py-4">
+                        <td class="text-center px-4 py-4">
                             @if($sale->payment_method == 'cash')
                                 <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-1 fw-medium">Tunai</span>
                             @elseif($sale->payment_method == 'qris')
@@ -211,7 +211,7 @@
                                 <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-1 fw-medium">Transfer</span>
                             @endif
                         </td>
-                        <td class="text-center px-3 py-4">
+                        <td class="text-center px-4 py-4">
                             @if($sale->status == 'completed')
                                 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 py-1">Selesai</span>
                             @elseif($sale->status == 'pending')
