@@ -201,9 +201,14 @@ class DashboardController extends Controller
             ->sum('total_price');
     }
 
-    private function changePercent(int $current, int $previous): float
+    private function changePercent(int $current, int $previous): ?float
     {
-        return $previous > 0 ? round((($current - $previous) / $previous) * 100, 1) : 0;
+        if ($previous == 0) {
+            // Tidak ada baseline pembanding → biarkan UI menampilkan status netral
+            return null;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
     }
 
     private function kpiPayload(int $current, int $previous): array
@@ -214,7 +219,7 @@ class DashboardController extends Controller
             'value' => $current,
             'formatted' => 'Rp ' . number_format($current, 0, ',', '.'),
             'change_percent' => $change,
-            'is_increase' => $change >= 0,
+            'is_increase' => $change !== null ? $change >= 0 : null,
         ];
     }
 

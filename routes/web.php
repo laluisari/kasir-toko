@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/admin');
 });
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -18,6 +18,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Protected routes - require authentication
 Route::middleware(['auth'])->group(function () {
+    Route::get('/admin', function () {
+        return redirect()->route('dashboard');
+    });
+
     Route::get('/home', function () {
         return view('admin.users.index');
     });

@@ -17,7 +17,7 @@
                     
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <h6 class="mb-0" id="kpi-todays-sales" style="font-size: 1.5rem;">-</h6>
+                            <h6 class="mb-0" id="kpi-todays-sales" style="font-size: 1.25rem;">-</h6>
                         </div>
                         <div class="w-40-px h-40-px bg-blue rounded-circle d-flex justify-content-center align-items-center">
                             <iconify-icon icon="solar:wallet-bold" class="text-white text-xl mb-0"></iconify-icon>
@@ -36,16 +36,18 @@
         <div class="col-md-3">
             <div class="card shadow-none border bg-gradient-start-2 h-100">
                 <div class="card-body p-20">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <p class="fw-medium text-primary-light mb-3" style="font-size: 0.9rem;">📅 Penjualan Bulan Ini</p>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <p class="fw-medium text-primary-light mb-1">📅 Penjualan Bulan Ini</p>
-                            <h6 class="mb-0" id="kpi-month-sales">-</h6>
-                            <div class="mt-2" id="kpi-month-sales-change" style="font-size: 0.875rem;"></div>
+                            <h6 class="mb-0" id="kpi-month-sales" style="font-size: 1.125rem;">-</h6>
                         </div>
-                        <div class="w-50-px h-50-px bg-warning rounded-circle d-flex justify-content-center align-items-center">
-                            <iconify-icon icon="solar:graph-bold" class="text-white text-2xl mb-0"></iconify-icon>
+                        <div class="w-40-px h-40-px bg-warning rounded-circle d-flex justify-content-center align-items-center">
+                            <iconify-icon icon="solar:graph-bold" class="text-white text-xl mb-0"></iconify-icon>
                         </div>
                     </div>
+                    
+                    <div id="kpi-month-sales-change" style="font-size: 0.875rem;"></div>
                 </div>
             </div>
         </div>
@@ -54,16 +56,18 @@
         <div class="col-md-3">
             <div class="card shadow-none border bg-gradient-start-3 h-100">
                 <div class="card-body p-20">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <p class="fw-medium text-primary-light mb-3" style="font-size: 0.9rem;">📆 Penjualan Tahun Ini</p>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <p class="fw-medium text-primary-light mb-1">📆 Penjualan Tahun Ini</p>
-                            <h6 class="mb-0" id="kpi-year-sales">-</h6>
-                            <div class="mt-2" id="kpi-year-sales-change" style="font-size: 0.875rem;"></div>
+                            <h6 class="mb-0" id="kpi-year-sales" style="font-size: 1.125rem;">-</h6>
                         </div>
-                        <div class="w-50-px h-50-px bg-success rounded-circle d-flex justify-content-center align-items-center">
-                            <iconify-icon icon="solar:chart-2-bold" class="text-white text-2xl mb-0"></iconify-icon>
+                        <div class="w-40-px h-40-px bg-success rounded-circle d-flex justify-content-center align-items-center">
+                            <iconify-icon icon="solar:chart-2-bold" class="text-white text-xl mb-0"></iconify-icon>
                         </div>
                     </div>
+                    
+                    <div id="kpi-year-sales-change" style="font-size: 0.875rem;"></div>
                 </div>
             </div>
         </div>
@@ -72,13 +76,14 @@
         <div class="col-md-3">
             <div class="card shadow-none border bg-gradient-start-4 h-100">
                 <div class="card-body p-20">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <p class="fw-medium text-primary-light mb-3" style="font-size: 0.9rem;">🛍️ Item Hari Ini</p>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <p class="fw-medium text-primary-light mb-1">🛍️ Item Hari Ini</p>
-                            <h6 class="mb-0" id="kpi-todays-items">-</h6>
+                            <h6 class="mb-0" id="kpi-todays-items" style="font-size: 1.125rem;">-</h6>
                         </div>
-                        <div class="w-50-px h-50-px bg-danger rounded-circle d-flex justify-content-center align-items-center">
-                            <iconify-icon icon="solar:bag-2-bold" class="text-white text-2xl mb-0"></iconify-icon>
+                        <div class="w-40-px h-40-px bg-danger rounded-circle d-flex justify-content-center align-items-center">
+                            <iconify-icon icon="solar:bag-2-bold" class="text-white text-xl mb-0"></iconify-icon>
                         </div>
                     </div>
                 </div>
@@ -93,7 +98,7 @@
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h5 class="mb-0">📈 Grafik Penjualan</h5>
+                        <h6 class="mb-0" style="font-size: 0.875rem; font-weight: 600;">📈 Grafik Penjualan</h6>
                         <select id="chartRangeFilter" class="form-select form-select-sm" style="width: 150px;">
                             <option value="week">Minggu Terakhir</option>
                             <option value="1month" selected>Bulan Ini</option>
@@ -112,10 +117,10 @@
         <!-- Produk Terlaris -->
         <div class="col-lg-6">
             <div class="card h-100">
-                <div class="card-header border-0 bg-transparent">
-                    <h5 class="mb-0"><iconify-icon icon="solar:cup-star-bold" class="me-2"></iconify-icon>Produk Terlaris (All Time Top 5)</h5>
+                <div class="card-header border-0 bg-transparent py-3 px-4">
+                    <h6 class="mb-0" style="font-size: 0.875rem; font-weight: 600;"><iconify-icon icon="solar:cup-star-bold" class="me-2" style="font-size: 1rem; vertical-align: -0.125em;"></iconify-icon>Produk Terlaris (All Time Top 5)</h6>
                 </div>
-                <div class="table-responsive">
+                <div class="table-responsive px-3 pb-2">
                     <table class="table table-sm table-hover mb-0">
                         <thead class="table-light">
                             <tr>
@@ -137,8 +142,8 @@
         <!-- Payment Methods -->
         <div class="col-lg-6">
             <div class="card h-100">
-                <div class="card-header border-0 bg-transparent">
-                    <h5 class="mb-0"><iconify-icon icon="solar:card-2-bold" class="me-2"></iconify-icon>Metode Pembayaran Hari Ini</h5>
+                <div class="card-header border-0 bg-transparent py-3 px-4">
+                    <h6 class="mb-0" style="font-size: 0.875rem; font-weight: 600;"><iconify-icon icon="solar:card-2-bold" class="me-2" style="font-size: 1rem; vertical-align: -0.125em;"></iconify-icon>Metode Pembayaran Hari Ini</h6>
                 </div>
                 <div class="card-body" id="payment-methods-container">
                     <div class="text-center text-muted py-4">Memuat...</div>
@@ -152,10 +157,10 @@
         <!-- Stok Warning -->
         <div class="col-lg-6">
             <div class="card h-100">
-                <div class="card-header border-0 bg-transparent">
-                    <h5 class="mb-0"><iconify-icon icon="solar:danger-triangle-bold" class="me-2"></iconify-icon>Produk Stok Terbatas (&lt; 5)</h5>
+                <div class="card-header border-0 bg-transparent py-3 px-4">
+                    <h6 class="mb-0" style="font-size: 0.875rem; font-weight: 600;"><iconify-icon icon="solar:danger-triangle-bold" class="me-2" style="font-size: 1rem; vertical-align: -0.125em;"></iconify-icon>Produk Stok Terbatas (&lt; 5)</h6>
                 </div>
-                <div class="table-responsive">
+                <div class="table-responsive px-3 pb-2">
                     <table class="table table-sm table-hover mb-0">
                         <thead class="table-light">
                             <tr>
@@ -177,10 +182,10 @@
         <!-- Category Stats -->
         <div class="col-lg-6">
             <div class="card h-100">
-                <div class="card-header border-0 bg-transparent">
-                    <h5 class="mb-0"><iconify-icon icon="solar:widget-add-bold" class="me-2"></iconify-icon>Penjualan per Kategori (Hari Ini)</h5>
+                <div class="card-header border-0 bg-transparent py-3 px-4">
+                    <h6 class="mb-0" style="font-size: 0.875rem; font-weight: 600;"><iconify-icon icon="solar:widget-add-bold" class="me-2" style="font-size: 1rem; vertical-align: -0.125em;"></iconify-icon>Penjualan per Kategori (Hari Ini)</h6>
                 </div>
-                <div class="table-responsive">
+                <div class="table-responsive px-3 pb-2">
                     <table class="table table-sm table-hover mb-0">
                         <thead class="table-light">
                             <tr>
@@ -241,12 +246,12 @@
 
                 const k = data.kpi;
                 document.getElementById('kpi-todays-sales').textContent = k.todays_sales.formatted;
-                updateKPIChange('kpi-todays-sales-change', k.todays_sales.change_percent, k.todays_sales.is_increase, 'dari kemarin');
+                updateKPIChange('kpi-todays-sales-change', k.todays_sales.change_percent, k.todays_sales.is_increase);
                 document.getElementById('kpi-todays-transactions').textContent = k.todays_transactions + ' transaksi';
                 document.getElementById('kpi-month-sales').textContent = k.month_sales.formatted;
-                updateKPIChange('kpi-month-sales-change', k.month_sales.change_percent, k.month_sales.is_increase, 'vs bulan lalu');
+                updateKPIChange('kpi-month-sales-change', k.month_sales.change_percent, k.month_sales.is_increase);
                 document.getElementById('kpi-year-sales').textContent = k.year_sales.formatted;
-                updateKPIChange('kpi-year-sales-change', k.year_sales.change_percent, k.year_sales.is_increase, 'vs tahun lalu');
+                updateKPIChange('kpi-year-sales-change', k.year_sales.change_percent, k.year_sales.is_increase);
                 document.getElementById('kpi-todays-items').textContent = k.todays_items;
 
                 // Tampilkan tiap panel berurutan (stagger) biar tetap terasa "per element"
@@ -257,12 +262,15 @@
             });
     }
 
-    function updateKPIChange(elementId, changePercent, isIncrease, periodLabel) {
+    function updateKPIChange(elementId, changePercent, isIncrease) {
         const element = document.getElementById(elementId);
         if (!element) return;
-        
-        const color = isIncrease ? '#198754' : '#dc3545';
-        element.innerHTML = `<span style="color: ${color}; font-size: 0.875rem; font-weight: 600;">${Math.abs(changePercent)}% ${periodLabel}</span>`;
+
+        const percent = Number(Math.abs(changePercent).toFixed(1));
+
+        // Baseline kosong atau setara periode sebelumnya → hitam (netral), cukup warna
+        const color = (changePercent === null || percent === 0) ? '#212529' : (isIncrease ? '#198754' : '#dc3545');
+        element.innerHTML = `<span style="color: ${color}; font-size: 0.875rem; font-weight: 600;">${percent}%</span>`;
     }
 
     // Load Sales Chart (ApexCharts)
