@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public routes
 Route::get('/', function () {
-    return redirect('/admin');
+    return redirect()->route(auth()->check() ? 'dashboard' : 'login');
 });
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

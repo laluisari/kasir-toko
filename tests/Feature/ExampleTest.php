@@ -8,22 +8,24 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     /**
-     * Root route should redirect to /admin.
+     * Guest hitting root should be redirected to login.
      */
-    public function test_the_root_route_redirects_to_admin(): void
+    public function test_guests_hitting_root_are_sent_to_login(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect('/admin');
+        $response->assertRedirect(route('login'));
     }
 
     /**
-     * Unauthenticated access to /admin should redirect to login.
+     * Authenticated user hitting root should be redirected to the dashboard.
      */
-    public function test_admin_requires_authentication(): void
+    public function test_authenticated_users_hitting_root_are_sent_to_dashboard(): void
     {
-        $response = $this->get('/admin');
+        $admin = \App\Models\User::factory()->make(['role' => 'admin']);
 
-        $response->assertRedirect(route('login'));
+        $this->actingAs($admin)
+            ->get('/')
+            ->assertRedirect(route('dashboard'));
     }
 }
