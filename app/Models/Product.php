@@ -18,4 +18,15 @@ class Product extends Model
         return $this->belongsToMany(Sale::class, 'sale_product');
     }
 
+    public function images(): array
+    {
+        if (blank($this->image)) {
+            return [];
+        }
+
+        return collect(preg_split('/[\s,]+/', trim($this->image)))
+            ->filter()
+            ->values()
+            ->all();
+    }
 }

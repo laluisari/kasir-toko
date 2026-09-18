@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\StockOpname;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class StockOpnameController extends Controller
@@ -118,13 +119,36 @@ class StockOpnameController extends Controller
                 ->with('error', 'Periode Stock Opname ini sudah selesai.');
         }
 
+        $stockOpname->load('items.product');
+
+        $adjusted = 0;
+        foreach ($stockOpname->items as $item) {
+            if (!$item->product) {
+                continue;
+            }
+
+            // Stok disesuaikan ke hasil hitung: penetapan menang kalau diisi, kalau tidak pakai stok fisik.
+            $newStock = $item->stok_penetapan ?? $item->stok_fisik;
+            if ($newStock === null) {
+                continue;
+            }
+
+            $item->product->update(['stock' => (int) $newStock]);
+            $adjusted++;
+        }
+
         $stockOpname->update([
             'status' => 'done',
             'ended_at' => now(),
         ]);
 
+        Cache::forget('dashboard.summary');
+
+        $totalSelisih = (int) $stockOpname->items->sum('selisih');
+        $selisihText = ($totalSelisih >= 0 ? '+' : '') . $totalSelisih;
+
         return redirect()->route('stock-opname.show', $stockOpname)
-            ->with('success', "Periode {$stockOpname->code} selesai. Selisih dicatat tanpa mengubah stok.");
+            ->with('success', "Periode {$stockOpname->code} selesai. {$adjusted} stok produk disesuaikan ke hasil hitung (selisih {$selisihText} unit).");
     }
 
     public function cancel(StockOpname $stockOpname)
