@@ -105,7 +105,7 @@
                                     </button>
 
                                     <!-- Delete Button -->
-                                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus produk ini?');">
+                                    <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="d-inline" onsubmit="handleFormSubmit(event, 'Yakin ingin menghapus produk ini?');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="d-flex align-items-center justify-content-center" 
@@ -657,19 +657,7 @@
     // Print Barcode Button
     const PRINT_MODE = @json(config('thermal.print_mode'));
 
-    $('.print-barcode-btn').on('click', function() {
-        const button = this;
-        const id = $(this).data('id');
-        const name = $(this).data('name');
-        const barcode = $(this).data('barcode') || '';
-
-        if (button.disabled || $(button).hasClass('print-disabled') || !barcode) {
-            alert('Produk ini belum punya kode barcode.');
-            return;
-        }
-
-        if (!confirm('Cetak barcode untuk "' + name + '"?')) return;
-
+    function doPrintBarcode(button, id, name) {
         if (PRINT_MODE === 'browser') {
             const labelUrl = "{{ route('products.barcode-label', ':id') }}".replace(':id', id) + '?copies=' + @json(config('thermal.barcode_copies'));
             window.open(labelUrl, '_blank');
@@ -700,6 +688,22 @@
             button.disabled = false;
             button.innerHTML = originalHtml;
         });
+    }
+
+    $('.print-barcode-btn').on('click', function() {
+        const button = this;
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+        const barcode = $(this).data('barcode') || '';
+
+        if (button.disabled || $(button).hasClass('print-disabled') || !barcode) {
+            alert('Produk ini belum punya kode barcode.');
+            return;
+        }
+
+        showConfirmation('Cetak barcode untuk "' + name + '"?', function() {
+            doPrintBarcode(button, id, name);
+        }, 'Ya, Cetak');
     });
 </script>
 @endsection

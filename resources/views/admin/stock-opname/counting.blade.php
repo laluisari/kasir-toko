@@ -112,16 +112,18 @@
             <span class="text-secondary-light text-sm">{{ $stockOpname->started_at?->format('d M Y H:i') }} • {{ $stockOpname->note ?? 'Tanpa keterangan' }}</span>
         </div>
         <div class="d-flex gap-2">
-            <form action="{{ route('stock-opname.cancel', $stockOpname) }}" method="POST" onsubmit="return confirm('Batalkan periode ini? Semua catatan item akan dihapus.');">
+            <form action="{{ route('stock-opname.cancel', $stockOpname) }}" method="POST" onsubmit="handleFormSubmit(event, 'Batalkan periode ini? Semua catatan item akan dihapus.');">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-outline-danger radius-8 px-16 py-8">
-                    <iconify-icon icon="lucide:x" style="font-size: 1rem;"></iconify-icon> Batalkan
+                    {{-- <iconify-icon icon="lucide:x" style="font-size: 1rem;"></iconify-icon>  --}}
+                    Batalkan
                 </button>
             </form>
-            <form action="{{ route('stock-opname.finish', $stockOpname) }}" method="POST" onsubmit="return confirm('Selesaikan periode ini? Stok akan disesuaikan ke hasil hitung, lalu penjualan dibuka kembali.');">
+            <form action="{{ route('stock-opname.finish', $stockOpname) }}" method="POST" onsubmit="handleFormSubmit(event, 'Selesaikan periode ini? Stok akan disesuaikan ke hasil hitung, lalu penjualan dibuka kembali.');">
                 @csrf
                 <button type="submit" class="btn btn-sm btn-success radius-8 px-16 py-8 fw-semibold" style="box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-                    <iconify-icon icon="lucide:check" style="font-size: 1rem;"></iconify-icon> Selesai SO
+                    {{-- <iconify-icon icon="lucide:check" style="font-size: 1rem;"></iconify-icon>  --}}
+                    Selesai SO
                 </button>
             </form>
         </div>

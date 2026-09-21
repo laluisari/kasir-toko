@@ -62,7 +62,7 @@
                                     </button>
 
                                     <!-- Delete Button -->
-                                    <form action="{{ route('categories.destroy', $category->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin ingin menghapus kategori ini?');">
+                                    <form action="{{ route('categories.destroy', $category->id) }}" method="POST" class="d-inline" onsubmit="handleFormSubmit(event, 'Yakin ingin menghapus kategori ini?');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="d-flex align-items-center justify-content-center" 

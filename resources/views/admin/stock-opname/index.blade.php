@@ -92,13 +92,13 @@
                                         <a href="{{ route('stock-opname.counting', $opname) }}" class="btn btn-sm btn-primary-600 radius-8 px-16 py-8 d-flex align-items-center gap-2" style="box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
                                             <iconify-icon icon="lucide:clipboard-list" style="font-size: 1rem;"></iconify-icon> Catat
                                         </a>
-                                        <form action="{{ route('stock-opname.finish', $opname) }}" method="POST" class="d-inline" onsubmit="return confirm('Selesaikan periode {{ $opname->code }}? Penjualan kembali dibuka.');">
+                                        <form action="{{ route('stock-opname.finish', $opname) }}" method="POST" class="d-inline" onsubmit="handleFormSubmit(event, 'Selesaikan periode {{ $opname->code }}? Penjualan kembali dibuka.');">
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-success radius-8 px-16 py-8 d-flex align-items-center gap-2" style="box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
                                                 <iconify-icon icon="lucide:check" style="font-size: 1rem;"></iconify-icon> Selesai
                                             </button>
                                         </form>
-                                        <form action="{{ route('stock-opname.cancel', $opname) }}" method="POST" class="d-inline" onsubmit="return confirm('Batalkan periode ini? Semua catatan item akan dihapus.');">
+                                        <form action="{{ route('stock-opname.cancel', $opname) }}" method="POST" class="d-inline" onsubmit="handleFormSubmit(event, 'Batalkan periode ini? Semua catatan item akan dihapus.');">
                                             @csrf
                                             <button type="submit" class="d-flex align-items-center justify-content-center"
                                                     style="width: 32px; height: 32px; border-radius: 0.5rem; background-color: #fef2f2; border: 1.5px solid #fecaca; color: #dc2626; cursor: pointer; padding: 0; margin: 0;"

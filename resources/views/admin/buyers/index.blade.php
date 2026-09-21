@@ -90,10 +90,10 @@
                                     class="edit-btn bg-success-focus text-success-600 bg-hover-success-200 fw-medium w-40-px h-40-px d-flex justify-content-center align-items-center rounded-circle">
                                     <iconify-icon icon="lucide:edit" class="menu-icon"></iconify-icon>
                                 </button>
-                                <form action="{{ route('buyers.destroy', $buyer->id) }}" method="POST" style="display: inline;">
+                                <form action="{{ route('buyers.destroy', $buyer->id) }}" method="POST" style="display: inline;" onsubmit="handleFormSubmit(event, 'Hapus buyer ini?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="remove-item-btn bg-danger-focus bg-hover-danger-200 text-danger-600 fw-medium w-40-px h-40-px d-flex justify-content-center align-items-center rounded-circle" onclick="return confirm('Hapus buyer ini?')">
+                                    <button type="submit" class="remove-item-btn bg-danger-focus bg-hover-danger-200 text-danger-600 fw-medium w-40-px h-40-px d-flex justify-content-center align-items-center rounded-circle">
                                         <iconify-icon icon="fluent:delete-24-regular" class="menu-icon"></iconify-icon>
                                     </button>
                                 </form>

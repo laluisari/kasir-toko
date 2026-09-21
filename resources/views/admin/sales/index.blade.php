@@ -1169,10 +1169,12 @@
             alert('Kembali ke keranjang untuk mengosongkan item.');
             return;
         }
-        if (!confirm('Kosongkan keranjang?')) {
-            return;
-        }
+        showConfirmation('Kosongkan keranjang?', function() {
+            performClearCart();
+        }, 'Ya, Kosongkan');
+    }
 
+    function performClearCart() {
         fetch('{{ route("sales.clear-cart") }}', {
             method: 'DELETE',
             headers: {
