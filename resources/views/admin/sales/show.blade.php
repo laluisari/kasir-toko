@@ -4,6 +4,80 @@
 @section('subTitle', 'Tampilkan Nota Penjualan')
 
 @section('content')
+@php
+    $lineWidth = (int) config('thermal.line_width', 42);
+    $storeName = (string) config('thermal.store_name', 'TOKO SERBAGUNA');
+    $storeAddress = (string) config('thermal.store_address', 'Jl. Raya No. 123');
+    $money = fn (int $v) => number_format($v, 0, ',', '.');
+    $trim = fn (string $s, int $w) => rtrim(mb_strimwidth($s, 0, $w, '', 'UTF-8'));
+    $div = str_repeat('-', $lineWidth);
+
+    $rectext = [];
+    $rectext[] = str_pad($storeName, $lineWidth, ' ', STR_PAD_BOTH);
+    $rectext[] = str_pad($storeAddress, $lineWidth, ' ', STR_PAD_BOTH);
+    $rectext[] = $div;
+    $rectext[] = $saleDocument->invoice_number ?? '-';
+    $rectext[] = 'Kasir: ' . ($saleDocument->user->name ?? 'Admin');
+    $rectext[] = 'Tanggal: ' . optional($saleDocument->created_at)->format('d/m/Y H:i') ?? '-';
+    $rectext[] = 'Metode: ' . strtoupper((string) $saleDocument->payment_method);
+    if ($saleDocument->buyer) {
+        $rectext[] = 'Pelanggan: ' . $saleDocument->buyer->name;
+        if (!empty($saleDocument->buyer->phone)) {
+            $rectext[] = 'No. HP: ' . $saleDocument->buyer->phone;
+        }
+    }
+    if (($saleDocument->payment_type ?? 'full') === 'debt' && !empty($saleDocument->due_date)) {
+        $rectext[] = 'Jatuh Tempo: ' . date('d/m/Y', strtotime((string) $saleDocument->due_date));
+    }
+    $rectext[] = $div;
+
+    $calGross = 0;
+    $calDiscount = 0;
+    foreach ($saleDocument->sales as $sale) {
+        $qty = (int) $sale->quantity;
+        $price = (int) $sale->selling_price;
+        $gross = $price * $qty;
+        $discount = ((int) ($sale->discount ?? 0)) * $qty;
+        $calGross += $gross;
+        $calDiscount += $discount;
+
+        $rectext[] = $trim((string) $sale->product_name, $lineWidth);
+        $left = $qty . ' x @ Rp ' . $money($price);
+        $right = 'Rp ' . $money($gross);
+        $right = $trim($right, $lineWidth - 5);
+        $left = $trim($left, max(1, $lineWidth - mb_strwidth($right) - 1));
+        $pad = max(1, $lineWidth - mb_strwidth($left) - mb_strwidth($right));
+        $rectext[] = $left . str_repeat(' ', $pad) . $right;
+        if ((int) ($sale->discount ?? 0) > 0) {
+            $rectext[] = 'Diskon: -Rp ' . $money($discount);
+        }
+    }
+
+    $rectext[] = $div;
+    $total = $calGross - $calDiscount;
+    $rectext[] = 'Subtotal: Rp ' . $money($calGross);
+    if ($calDiscount > 0) {
+        $rectext[] = 'Total Diskon: -Rp ' . $money($calDiscount);
+    }
+    $rectext[] = '>>> TOTAL: Rp ' . $money($total);
+
+    if (($saleDocument->payment_type ?? 'full') === 'debt') {
+        $rectext[] = 'Bayar Awal: Rp ' . $money((int) $saleDocument->down_payment);
+        $rectext[] = '>>> SISA HUTANG: Rp ' . $money((int) $saleDocument->debt_remaining);
+        if (!empty($saleDocument->debt_note)) {
+            $rectext[] = $trim('Catatan: ' . $saleDocument->debt_note, $lineWidth);
+        }
+    } else {
+        $rectext[] = 'Uang Diterima: Rp ' . $money((int) $saleDocument->paid_amount);
+        $rectext[] = '>>> Kembalian: Rp ' . $money((int) $saleDocument->change_amount);
+    }
+    $rectext[] = $div;
+    $rectext[] = str_pad('Terima kasih telah berbelanja', $lineWidth, ' ', STR_PAD_BOTH);
+    $rectext[] = str_pad(optional($saleDocument->created_at)->format('d M Y H:i:s') ?? '-', $lineWidth, ' ', STR_PAD_BOTH);
+    $rectext[] = '';
+
+    $rectext = implode("\n", $rectext) . "\n";
+@endphp
 <div class="container py-3">
     <div class="row justify-content-center">
         <div class="col-md-5 col-lg-4">
@@ -232,8 +306,53 @@
 
 <script>
     const PRINT_MODE = @json(config('thermal.print_mode'));
+    const BRIDGE_URL = @json(config('thermal.bridge_url'));
+    const BRIDGE_PRINTER = @json(config('thermal.bridge_printer', ''));
+
+    const RECEIPT_TEXT = @json($rectext ?? '');
+
+    async function printViaBridge(content) {
+        const button = document.getElementById('printThermalBtn');
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Printing...';
+        }
+
+        try {
+            const body = { content: content };
+            if (BRIDGE_PRINTER) {
+                body.printer = BRIDGE_PRINTER;
+            }
+
+            const response = await fetch(BRIDGE_URL + '/print', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || data.message || 'Bridge gagal mencetak.');
+            }
+
+            alert(data.message || 'Struk berhasil dikirim ke printer.');
+        } catch (error) {
+            alert('Print bridge gagal: ' + (error.message || 'bridge tidak terjangkau.') + "\nPastikan bridge berjalan di " + BRIDGE_URL);
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Print Thermal';
+            }
+        }
+    }
 
     async function printThermalReceipt() {
+        if (PRINT_MODE === 'bridge') {
+            return printViaBridge(RECEIPT_TEXT);
+        }
+
         if (PRINT_MODE === 'browser') {
             return printReceipt();
         }

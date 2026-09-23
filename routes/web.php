@@ -54,6 +54,7 @@ Route::middleware(['auth'])->group(function () {
         ]);
         Route::post('/products/{product}/print-barcode', [PrintController::class, 'printBarcode'])->name('products.print-barcode');
         Route::get('/products/{product}/barcode-label', [PrintController::class, 'barcodeLabel'])->name('products.barcode-label');
+        Route::get('/products/{product}/barcode-data', [PrintController::class, 'barcodeData'])->name('products.barcode-data');
 
         Route::get('/stock-opname', [StockOpnameController::class, 'index'])->name('stock-opname.index');
         Route::post('/stock-opname', [StockOpnameController::class, 'store'])->name('stock-opname.store');

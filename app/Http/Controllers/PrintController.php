@@ -58,4 +58,18 @@ class PrintController extends Controller
 
         return view('admin.products.barcode-label', compact('product', 'copies'));
     }
+
+    public function barcodeData(Product $product): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'product' => [
+                'id' => $product->id,
+                'name' => (string) $product->name,
+                'barcode' => (string) $product->barcode,
+                'selling_price' => (int) $product->selling_price,
+                'unit' => (string) ($product->unit ?: 'pcs'),
+            ],
+        ]);
+    }
 }

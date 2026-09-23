@@ -656,8 +656,72 @@
 
     // Print Barcode Button
     const PRINT_MODE = @json(config('thermal.print_mode'));
+    const BRIDGE_URL = @json(config('thermal.bridge_url'));
+    const BRIDGE_PRINTER = @json(config('thermal.bridge_printer', ''));
+
+    function printBarcodeViaBridge(button, id) {
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span id="printSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="width:0.9rem;height:0.9rem;"></span>';
+
+        fetch("{{ route('products.barcode-data', ':id') }}".replace(':id', id), {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) {
+                throw new Error(data.error || data.message || 'Gagal ambil data barcode.');
+            }
+            return sendBridgeBarcode(data.product.name, data.product.barcode, data.product.selling_price);
+        })
+        .then(success => {
+            if (success) alert('Barcode berhasil dikirim ke printer.');
+        })
+        .catch(error => alert(error.message || 'Terjadi kesalahan saat cetak barcode.'))
+        .finally(() => {
+            button.disabled = false;
+            button.innerHTML = originalHtml;
+        });
+    }
+
+    function sendBridgeBarcode(name, barcode, price) {
+        const lineWidth = 42;
+        const money = new Intl.NumberFormat('id-ID').format(Number(price || 0));
+        const center = (s) => {
+            const pad = Math.max(0, Math.floor((lineWidth - s.length) / 2));
+            return ' '.repeat(pad) + s;
+        };
+        const content = center(name) + '\n' +
+            center('*' + barcode + '*') + '\n' +
+            center('Rp ' + money) + '\n\n';
+
+        const body = { content: content };
+        if (BRIDGE_PRINTER) body.printer = BRIDGE_PRINTER;
+
+        return fetch(BRIDGE_URL + '/print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        })
+        .then(response => response.json().then(d => ({ ok: response.ok, data: d })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) throw new Error(data.error || data.message || 'Bridge gagal mencetak.');
+            return true;
+        })
+        .catch(error => {
+            throw new Error(error.message + "\nPastikan bridge berjalan di " + BRIDGE_URL);
+        });
+    }
 
     function doPrintBarcode(button, id, name) {
+        if (PRINT_MODE === 'bridge') {
+            printBarcodeViaBridge(button, id);
+            return;
+        }
+
         if (PRINT_MODE === 'browser') {
             const labelUrl = "{{ route('products.barcode-label', ':id') }}".replace(':id', id) + '?copies=' + @json(config('thermal.barcode_copies'));
             window.open(labelUrl, '_blank');
