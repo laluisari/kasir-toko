@@ -4,6 +4,13 @@
 @section('subTitle', 'List')
 
 @section('content')
+@php
+    $printMode = (string) config('thermal.print_mode', 'browser');
+    $isAndroid = stripos((string) request()->userAgent(), 'android') !== false;
+    if ($printMode === 'bridge' && $isAndroid) {
+        $printMode = 'browser';
+    }
+@endphp
 
 <div class="card h-100 p-0 radius-12">
     <!-- Card Header -->
@@ -655,7 +662,7 @@
     });
 
     // Print Barcode Button
-    const PRINT_MODE = @json(config('thermal.print_mode'));
+    const PRINT_MODE = @json($printMode);
     const BRIDGE_URL = @json(config('thermal.bridge_url'));
     const BRIDGE_PRINTER = @json(config('thermal.bridge_printer', ''));
 

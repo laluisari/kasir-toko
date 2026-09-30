@@ -5,6 +5,14 @@
 
 @section('content')
 @php
+    $printMode = (string) config('thermal.print_mode', 'browser');
+    // HP/tablet Android: browser tak bisa akses Bluetooth SPP (Web Bluetooth GATT-only),
+    // jadi otomatis cetak lewat window.print() + Print Service Android (Mopria/vendor).
+    // Windows/laptop tetap pakai bridge sesuai config — tidak berubah.
+    $isAndroid = stripos((string) request()->userAgent(), 'android') !== false;
+    if ($printMode === 'bridge' && $isAndroid) {
+        $printMode = 'browser';
+    }
     $lineWidth = (int) config('thermal.line_width', 42);
     $storeName = (string) config('thermal.store_name', 'TOKO SERBAGUNA');
     $storeAddress = (string) config('thermal.store_address', 'Jl. Raya No. 123');
@@ -244,7 +252,7 @@
                 <button id="printThermalBtn" class="btn btn-dark btn-sm flex-fill py-2 fw-semibold" onclick="printThermalReceipt()">
                     Print Thermal
                 </button>
-                @if (config('thermal.print_mode') === 'browser')
+                @if ($printMode === 'browser')
                 <button class="btn btn-primary btn-sm flex-fill py-2 fw-semibold" onclick="printReceipt()">
                     🖨️ Print 
                 </button>
@@ -305,7 +313,7 @@
 </style>
 
 <script>
-    const PRINT_MODE = @json(config('thermal.print_mode'));
+    const PRINT_MODE = @json($printMode);
     const BRIDGE_URL = @json(config('thermal.bridge_url'));
     const BRIDGE_PRINTER = @json(config('thermal.bridge_printer', ''));
 
