@@ -255,7 +255,7 @@
                 <button id="printThermalBtn" class="btn btn-dark btn-sm flex-fill py-2 fw-semibold" onclick="printThermalReceipt()">
                     Print Thermal
                 </button>
-                @if ($printMode === 'browser' || $isAndroid)
+                @if ($printMode === 'browser')
                 <button class="btn btn-primary btn-sm flex-fill py-2 fw-semibold" onclick="printReceipt()">
                     🖨️ Print 
                 </button>
