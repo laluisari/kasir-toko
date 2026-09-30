@@ -7,11 +7,14 @@
 @php
     $printMode = (string) config('thermal.print_mode', 'browser');
     // HP/tablet Android: browser tak bisa akses Bluetooth SPP (Web Bluetooth GATT-only),
-    // jadi otomatis cetak lewat window.print() + Print Service Android (Mopria/vendor).
+    // jadi cetak lewat bridge Android (Cleanter @ 127.0.0.1:9100). Kalau tidak terjangkau,
+    // fallback ke window.print() + Print Service Android.
     // Windows/laptop tetap pakai bridge sesuai config — tidak berubah.
     $isAndroid = stripos((string) request()->userAgent(), 'android') !== false;
-    if ($printMode === 'bridge' && $isAndroid) {
-        $printMode = 'browser';
+    $bridgeUrl = (string) config('thermal.bridge_url', 'http://127.0.0.1:8765');
+    if ($isAndroid) {
+        $printMode = 'bridge';
+        $bridgeUrl = (string) config('thermal.bridge_url_android', 'http://127.0.0.1:9100');
     }
     $lineWidth = (int) config('thermal.line_width', 42);
     $storeName = (string) config('thermal.store_name', 'TOKO SERBAGUNA');
@@ -252,7 +255,7 @@
                 <button id="printThermalBtn" class="btn btn-dark btn-sm flex-fill py-2 fw-semibold" onclick="printThermalReceipt()">
                     Print Thermal
                 </button>
-                @if ($printMode === 'browser')
+                @if ($printMode === 'browser' || $isAndroid)
                 <button class="btn btn-primary btn-sm flex-fill py-2 fw-semibold" onclick="printReceipt()">
                     🖨️ Print 
                 </button>
@@ -314,8 +317,9 @@
 
 <script>
     const PRINT_MODE = @json($printMode);
-    const BRIDGE_URL = @json(config('thermal.bridge_url'));
+    const BRIDGE_URL = @json($bridgeUrl);
     const BRIDGE_PRINTER = @json(config('thermal.bridge_printer', ''));
+    const IS_ANDROID = @json(boolval($isAndroid));
 
     const RECEIPT_TEXT = @json($rectext ?? '');
 
@@ -347,6 +351,11 @@
 
             alert(data.message || 'Struk berhasil dikirim ke printer.');
         } catch (error) {
+            if (IS_ANDROID) {
+                // Cleanter belum terbuka/tidak terjangkau → jatuh ke print dialog Android.
+                printReceipt();
+                return;
+            }
             alert('Print bridge gagal: ' + (error.message || 'bridge tidak terjangkau.') + "\nPastikan bridge berjalan di " + BRIDGE_URL);
         } finally {
             if (button) {

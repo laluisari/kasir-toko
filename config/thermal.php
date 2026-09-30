@@ -3,6 +3,7 @@
 return [
     'print_mode' => env('THERMAL_MODE', 'browser'),
     'bridge_url' => env('THERMAL_BRIDGE_URL', 'http://127.0.0.1:8765'),
+    'bridge_url_android' => env('THERMAL_BRIDGE_URL_ANDROID', 'http://127.0.0.1:9100'),
     'bridge_printer' => env('THERMAL_BRIDGE_PRINTER', ''),
     'device_path' => env('THERMAL_DEVICE_PATH', '/dev/cu.RPP02N'),
     'cups_queue' => env('THERMAL_CUPS_QUEUE', 'RPP02N-raw'),

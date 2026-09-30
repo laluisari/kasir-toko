@@ -7,8 +7,10 @@
 @php
     $printMode = (string) config('thermal.print_mode', 'browser');
     $isAndroid = stripos((string) request()->userAgent(), 'android') !== false;
-    if ($printMode === 'bridge' && $isAndroid) {
-        $printMode = 'browser';
+    $bridgeUrl = (string) config('thermal.bridge_url', 'http://127.0.0.1:8765');
+    if ($isAndroid) {
+        $printMode = 'bridge';
+        $bridgeUrl = (string) config('thermal.bridge_url_android', 'http://127.0.0.1:9100');
     }
 @endphp
 
@@ -663,8 +665,9 @@
 
     // Print Barcode Button
     const PRINT_MODE = @json($printMode);
-    const BRIDGE_URL = @json(config('thermal.bridge_url'));
+    const BRIDGE_URL = @json($bridgeUrl);
     const BRIDGE_PRINTER = @json(config('thermal.bridge_printer', ''));
+    const IS_ANDROID = @json(boolval($isAndroid));
 
     function printBarcodeViaBridge(button, id) {
         const originalHtml = button.innerHTML;
@@ -687,7 +690,15 @@
         .then(success => {
             if (success) alert('Barcode berhasil dikirim ke printer.');
         })
-        .catch(error => alert(error.message || 'Terjadi kesalahan saat cetak barcode.'))
+        .catch(error => {
+            if (IS_ANDROID) {
+                // Cleanter tidak terjangkau → buka label barcode untuk print dialog Android.
+                const labelUrl = "{{ route('products.barcode-label', ':id') }}".replace(':id', id) + '?copies=' + @json(config('thermal.barcode_copies'));
+                window.open(labelUrl, '_blank');
+                return;
+            }
+            alert(error.message || 'Terjadi kesalahan saat cetak barcode.');
+        })
         .finally(() => {
             button.disabled = false;
             button.innerHTML = originalHtml;
